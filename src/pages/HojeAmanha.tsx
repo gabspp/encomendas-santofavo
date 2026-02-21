@@ -1,8 +1,10 @@
+import { useState } from "react";
 import { useOrders } from "@/hooks/useOrders";
 import { FilterBar } from "@/components/orders/FilterBar";
 import { DaySection } from "@/components/orders/DaySection";
+import { NewOrderModal } from "@/components/orders/NewOrderModal";
 import { formatBrDate } from "@/utils/notion";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, Plus } from "lucide-react";
 
 export default function HojeAmanha() {
   const {
@@ -21,6 +23,8 @@ export default function HojeAmanha() {
     updateOrderDate,
   } = useOrders();
 
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
   return (
     <div className="space-y-6">
       {/* Page header */}
@@ -33,24 +37,35 @@ export default function HojeAmanha() {
             Pedidos por data de produção
           </p>
         </div>
-        <button
-          onClick={() => void refresh()}
-          disabled={loading}
-          className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 transition-colors disabled:opacity-50 cursor-pointer"
-          title="Atualizar agora"
-        >
-          <RefreshCw
-            className={`h-4 w-4 ${loading ? "animate-spin" : ""}`}
-          />
-          {lastFetched && (
-            <span className="text-xs text-gray-400">
-              {lastFetched.toLocaleTimeString("pt-BR", {
-                hour: "2-digit",
-                minute: "2-digit",
-              })}
-            </span>
-          )}
-        </button>
+
+        <div className="flex items-center gap-3">
+          {/* New order button */}
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="flex items-center gap-1.5 text-sm font-semibold bg-brand-brown text-white px-3 py-1.5 rounded-lg hover:opacity-90 transition-opacity cursor-pointer"
+          >
+            <Plus className="h-4 w-4" />
+            Novo Pedido
+          </button>
+
+          {/* Refresh button */}
+          <button
+            onClick={() => void refresh()}
+            disabled={loading}
+            className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 transition-colors disabled:opacity-50 cursor-pointer"
+            title="Atualizar agora"
+          >
+            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+            {lastFetched && (
+              <span className="text-xs text-gray-400">
+                {lastFetched.toLocaleTimeString("pt-BR", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </span>
+            )}
+          </button>
+        </div>
       </div>
 
       {/* Filter bar */}
@@ -99,6 +114,17 @@ export default function HojeAmanha() {
             onDateChange={updateOrderDate}
           />
         </div>
+      )}
+
+      {/* New order modal */}
+      {isModalOpen && (
+        <NewOrderModal
+          onClose={() => setIsModalOpen(false)}
+          onCreated={() => {
+            setIsModalOpen(false);
+            void refresh();
+          }}
+        />
       )}
     </div>
   );

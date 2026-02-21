@@ -238,6 +238,93 @@ const server = createServer(async (req, res) => {
     return;
   }
 
+  if (url.pathname === "/api/form-options" && req.method === "GET") {
+    try {
+      const db = await notion.databases.retrieve({ database_id: DB_ID });
+      const props = db.properties;
+      const metodosPagamento = props["Método de Pagamento"]?.select?.options?.map((o) => o.name) ?? [];
+      res.writeHead(200, { "Content-Type": "application/json", "Cache-Control": "s-maxage=300", "Access-Control-Allow-Origin": "*" });
+      res.end(JSON.stringify({ metodosPagamento }));
+    } catch (err) {
+      console.error("Form options error:", err);
+      res.writeHead(500, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: err.message }));
+    }
+    return;
+  }
+
+  if (url.pathname === "/api/create-order" && req.method === "POST") {
+    try {
+      const body = await new Promise((resolve, reject) => {
+        let data = "";
+        req.on("data", (chunk) => (data += chunk));
+        req.on("end", () => { try { resolve(JSON.parse(data)); } catch (e) { reject(e); } });
+        req.on("error", reject);
+      });
+      const draft = body.draft;
+      if (!draft?.cliente?.trim() || !draft?.atendente || !draft?.dataEntrega || !draft?.dataProducao || !draft?.entrega) {
+        res.writeHead(400, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: "Campos obrigatórios faltando" }));
+        return;
+      }
+
+      const NUMBER_PRODUCT_FIELDS = [
+        "🟫 PDM DLN", "🟥 PDM CAR", "🟨 PDM MAR", "⬛️ PDM CAJU", "🟦 PDM SR",
+        "🟧 PDM LAR", "⬜️ PDM MÊS", "PDM DL Sem",
+        "Bolo Choco Fatia", "Bolo Choco G", "Bolo Choco P",
+        "Bolo NOZES Fatia", "Bolo NOZES G", "Bolo NOZES P",
+        "Bolo PDM Fatia", "Bolo PDM G", "Bolo PDM P",
+        "Bolo de Especiarias G com calda", "Bolo de Mel Mini",
+        " ⚪️ Ovo Casca Car", " 🔴 Ovo PDM CAR", "⚫️ Ovo Fudge",
+        "🟠 Ovo Casca Caju Lar", "🟡 Ovo PDM DLN", "🟤 Ovo Amendoim ",
+        " 🔷️ Barra Caju", "🔺️ Barra Car",
+        "Caixa 3", "Caixa 6", "Caixa 9", "Caixa 15",
+        "Bala Caramelo", "Crocante",
+        "Barrinha Amendoim", "Barrinha Fudge",
+        "Barrinha Pistache e Cereja",
+        "Barrinha Queijo, doce de leite e ameixa",
+      ];
+
+      const hasBolo = NUMBER_PRODUCT_FIELDS.filter(f => f.startsWith("Bolo")).some(f => (draft.products?.[f] ?? 0) > 0);
+      const icon = hasBolo ? "🎂" : "🟢";
+
+      const productProps = {};
+      for (const field of NUMBER_PRODUCT_FIELDS) {
+        productProps[field] = { number: draft.products?.[field] ?? 0 };
+      }
+
+      const today = getBrazilDate(0);
+      const properties = {
+        "Cliente": { title: [{ text: { content: draft.cliente.trim() } }] },
+        "Atendente": { select: { name: draft.atendente } },
+        "Data ENTREGA": { date: { start: draft.dataEntrega } },
+        "Data PRODUÇÃO": { date: { start: draft.dataProducao } },
+        "Data do Pedido": { date: { start: today } },
+        "Entrega": { select: { name: draft.entrega } },
+        "Status": { status: { name: "Em aberto" } },
+        ...productProps,
+      };
+      if (draft.telefone?.trim()) properties["Telefone"] = { phone_number: draft.telefone.trim() };
+      if (draft.endereco?.trim()) properties["Endereço"] = { rich_text: [{ text: { content: draft.endereco.trim() } }] };
+      if (draft.metodoPagamento) properties["Método de Pagamento"] = { select: { name: draft.metodoPagamento } };
+      if (draft.taxaEntrega && parseFloat(draft.taxaEntrega) > 0) properties["Taxa Entrega"] = { number: parseFloat(draft.taxaEntrega) };
+      if (draft.observacao?.trim()) properties["Observação!"] = { rich_text: [{ text: { content: draft.observacao.trim() } }] };
+
+      const page = await notion.pages.create({
+        parent: { database_id: DB_ID },
+        icon: { type: "emoji", emoji: icon },
+        properties,
+      });
+      res.writeHead(200, { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" });
+      res.end(JSON.stringify({ ok: true, pageId: page.id }));
+    } catch (err) {
+      console.error("Create order error:", err);
+      res.writeHead(500, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: err.message }));
+    }
+    return;
+  }
+
   if (url.pathname === "/api/update-date" && req.method === "POST") {
     try {
       const body = await new Promise((resolve, reject) => {

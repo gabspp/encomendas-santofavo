@@ -21,6 +21,21 @@ export interface ParsedOrder {
   products: ProductItem[];
 }
 
+export interface NewOrderDraft {
+  atendente: string;
+  cliente: string;
+  telefone: string;
+  cep: string;
+  endereco: string;
+  dataEntrega: string;   // "YYYY-MM-DD"
+  dataProducao: string;  // "YYYY-MM-DD"
+  entrega: string;
+  metodoPagamento: string;
+  taxaEntrega: string;   // string para input binding
+  products: Record<string, number>; // chave = nome exato do campo no Notion
+  observacao: string;
+}
+
 export interface FilterState {
   loja: "todas" | "26" | "248";
   saida: "todos" | "entrega" | "retirada";
