@@ -1,24 +1,7 @@
-import {
-  AlertCircle,
-  Calendar,
-  Cake,
-  CheckCircle2,
-  Egg,
-  FileText,
-  Gift,
-  MapPin,
-  Package,
-  Phone,
-  Repeat2,
-  Star,
-  Truck,
-  User,
-} from "lucide-react";
-import type { LucideIcon } from "lucide-react";
-import type { ParsedOrder } from "@/types";
-import { formatBrDateFull } from "@/utils/notion";
+import type { ParsedOrder, ProductItem } from "@/types";
+import { formatBrDateWithDay } from "@/utils/notion";
 
-// ── Status ──────────────────────────────────────────────────────────────────
+// ── Status ───────────────────────────────────────────────────────────────────
 
 const STATUS_STYLES: Record<string, string> = {
   "Em aberto": "bg-gray-100 text-gray-500",
@@ -27,40 +10,67 @@ const STATUS_STYLES: Record<string, string> = {
   "Entregue":   "bg-gray-200 text-gray-400",
 };
 
-// ── Categoria (ícone da página no Notion) ────────────────────────────────────
+// ── Categoria (derivada do ícone do Notion) ──────────────────────────────────
 
-interface CategoryDef {
-  Icon: LucideIcon;
-  label: string;
-  className: string;
-}
+interface CategoryDef { label: string; className: string }
 
 const CATEGORY_MAP: Record<string, CategoryDef> = {
-  "✔️": { Icon: CheckCircle2, label: "Pronto",   className: "bg-green-100 text-green-700" },
-  "‼️": { Icon: AlertCircle,  label: "Atenção",  className: "bg-red-100 text-red-700" },
-  "🔁": { Icon: Repeat2,      label: "Revenda",  className: "bg-blue-100 text-blue-700" },
-  "🎂": { Icon: Cake,         label: "Bolo",     className: "bg-pink-100 text-pink-700" },
-  "🐰": { Icon: Egg,          label: "Páscoa",   className: "bg-yellow-100 text-yellow-800" },
-  "🎅": { Icon: Gift,         label: "Natal",    className: "bg-red-100 text-red-700" },
-  "✡️": { Icon: Star,         label: "Rosh Hashaná", className: "bg-amber-100 text-amber-700" },
-  // 🟢 = normal, sem badge
+  "✔️": { label: "Pronto",       className: "bg-green-100 text-green-700" },
+  "‼️": { label: "Atenção",      className: "bg-red-100 text-red-700" },
+  "🔁": { label: "Revenda",      className: "bg-blue-100 text-blue-700" },
+  "🎂": { label: "Bolo",         className: "bg-pink-100 text-pink-700" },
+  "🐰": { label: "Páscoa",       className: "bg-yellow-100 text-yellow-800" },
+  "🎅": { label: "Natal",        className: "bg-red-100 text-red-700" },
+  "✡️": { label: "Rosh Hashaná", className: "bg-amber-100 text-amber-700" },
 };
 
-// ── Entrega ──────────────────────────────────────────────────────────────────
+// ── Produtos: agrupamento e abreviação ───────────────────────────────────────
 
-function getDeliveryInfo(entrega: string) {
-  const isEntrega = entrega.startsWith("Entrega");
-  const loja = entrega.includes("248") ? "248" : entrega.includes("26") ? "26" : "";
-  return {
-    DeliveryIcon: isEntrega ? Truck : Package,
-    loja,
-    badgeClass:
-      loja === "248"
-        ? "bg-purple-100 text-purple-800"
-        : loja === "26"
-          ? "bg-blue-100 text-blue-800"
-          : "bg-gray-100 text-gray-600",
-  };
+interface ShortItem { short: string; qty: number }
+
+function stripLeadingNonAlpha(str: string): string {
+  return str.replace(/^[^A-Za-zÀ-ÖØ-öø-ÿ]+/, "").trim();
+}
+
+function pdmFlavor(name: string): string {
+  // "🟥 PDM CAR" → "Car" | "PDM Avulso" → "Avulso" | "PDM DL Sem" → "DL Sem"
+  const match = name.match(/PDM\s+(.+)/);
+  if (!match) return name;
+  const flavor = match[1];
+  // Title-case apenas palavras de 1 token (siglas ficam como estão se tiverem 2+ letras maiúsculas seguidas)
+  return flavor
+    .split(" ")
+    .map((w) =>
+      /^[A-ZÁÉÍÓÚ]{2,}$/.test(w)
+        ? w.charAt(0) + w.slice(1).toLowerCase()
+        : w
+    )
+    .join(" ");
+}
+
+function categorizeProducts(products: ProductItem[]): {
+  pdm: ShortItem[];
+  bolos: ShortItem[];
+  outros: ShortItem[];
+} {
+  const pdm: ShortItem[] = [];
+  const bolos: ShortItem[] = [];
+  const outros: ShortItem[] = [];
+
+  for (const item of products) {
+    const name = item.name; // já vem trimado da API
+    if (name.startsWith("Bolo")) {
+      // "Bolo PDM G" → "PDM G" | "Bolo de Mel Mini" → "Mel Mini"
+      const short = name.replace(/^Bolo\s+(de\s+)?/i, "");
+      bolos.push({ short, qty: item.qty });
+    } else if (name.includes("PDM") && !name.includes("Ovo")) {
+      pdm.push({ short: pdmFlavor(name), qty: item.qty });
+    } else {
+      outros.push({ short: stripLeadingNonAlpha(name), qty: item.qty });
+    }
+  }
+
+  return { pdm, bolos, outros };
 }
 
 // ── Component ────────────────────────────────────────────────────────────────
@@ -70,98 +80,111 @@ interface OrderCardProps {
 }
 
 export function OrderCard({ order }: OrderCardProps) {
-  const delivery = getDeliveryInfo(order.entrega);
   const category = CATEGORY_MAP[order.icon] ?? null;
 
-  return (
-    <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 flex flex-col gap-3">
+  const isEntrega = order.entrega.startsWith("Entrega");
+  const loja = order.entrega.includes("248")
+    ? "CONDOR 248"
+    : order.entrega.includes("26")
+      ? "26B"
+      : "";
 
-      {/* Header: nome + badges */}
-      <div className="flex items-start justify-between gap-2">
-        <h3 className="flex items-center gap-1.5 font-semibold text-gray-900 text-sm leading-tight">
-          <User size={13} className="text-gray-400 shrink-0" />
-          {order.cliente || "—"}
-        </h3>
-        <div className="flex items-center gap-1 shrink-0 flex-wrap justify-end">
-          {/* Categoria */}
+  const { pdm, bolos, outros } = categorizeProducts(order.products);
+  const total = order.products.reduce((sum, p) => sum + p.qty, 0);
+  const groups = [
+    { label: "PDM",   items: pdm },
+    { label: "Bolos", items: bolos },
+    { label: "Outros", items: outros },
+  ].filter((g) => g.items.length > 0);
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden flex flex-col">
+
+      {/* ── Header ─────────────────────────────────────────────────────── */}
+      <div className="flex items-start gap-3 p-4 pb-3">
+
+        {/* Ícone (emoji do Notion) */}
+        <div className="w-11 h-11 rounded-full bg-gray-50 border border-gray-200 flex items-center justify-center text-xl shrink-0 select-none">
+          {order.icon || "🟢"}
+        </div>
+
+        {/* Nome + categoria */}
+        <div className="flex-1 min-w-0 pt-0.5">
+          <h3 className="font-bold text-gray-900 text-sm leading-tight truncate">
+            {order.cliente || "—"}
+          </h3>
           {category && (
-            <span className={`flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${category.className}`}>
-              <category.Icon size={11} />
+            <span className={`inline-block mt-1 text-xs font-medium px-2 py-0.5 rounded-full ${category.className}`}>
               {category.label}
             </span>
           )}
-          {/* Status */}
+        </div>
+
+        {/* Entrega/Retirada | Loja + Status */}
+        <div className="shrink-0 text-right pt-0.5">
+          <p className="text-sm font-semibold text-gray-800">
+            {isEntrega ? "Entrega" : "Retirada"}
+            {loja && <span className="text-gray-400 font-normal"> · {loja}</span>}
+          </p>
           {order.status && (
-            <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${STATUS_STYLES[order.status] ?? "bg-gray-100 text-gray-500"}`}>
+            <span className={`inline-block mt-1 text-xs font-medium px-2 py-0.5 rounded-full ${STATUS_STYLES[order.status] ?? "bg-gray-100 text-gray-500"}`}>
               {order.status}
-            </span>
-          )}
-          {/* Loja */}
-          {delivery.loja && (
-            <span className={`flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${delivery.badgeClass}`}>
-              <delivery.DeliveryIcon size={11} />
-              {delivery.loja === "248" ? "CONDOR 248" : "26B"}
             </span>
           )}
         </div>
       </div>
 
-      {/* Tipo de entrega */}
-      {order.entrega && (
-        <p className="text-xs text-gray-400 -mt-1">{order.entrega}</p>
-      )}
+      {/* ── Datas ──────────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-2 divide-x divide-gray-100 border-t border-gray-100 text-xs">
+        <div className="px-4 py-2">
+          <p className="text-gray-400 mb-0.5">Produção</p>
+          <p className="font-medium text-gray-700">{formatBrDateWithDay(order.dataProducao)}</p>
+        </div>
+        <div className="px-4 py-2">
+          <p className="text-gray-400 mb-0.5">Entrega</p>
+          <p className="font-medium text-gray-700">{formatBrDateWithDay(order.dataEntrega) || "—"}</p>
+        </div>
+      </div>
 
-      {/* Data de entrega */}
-      {order.dataEntrega && (
-        <p className="flex items-center gap-1.5 text-xs text-gray-600">
-          <Calendar size={12} className="text-gray-400 shrink-0" />
-          Entrega:{" "}
-          <span className="font-medium">{formatBrDateFull(order.dataEntrega)}</span>
-        </p>
-      )}
-
-      {/* Produtos */}
+      {/* ── Produtos ───────────────────────────────────────────────────── */}
       {order.products.length > 0 && (
-        <div>
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">
+        <div className="border-t border-gray-100 px-4 py-3">
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
             Produtos
           </p>
-          <div className="flex flex-wrap gap-1">
-            {order.products.map((item) => (
-              <span
-                key={item.name}
-                className="text-xs bg-amber-50 text-amber-900 px-2 py-0.5 rounded-full border border-amber-100"
-              >
-                {item.name}: {item.qty}
-              </span>
+          <div
+            className="grid gap-x-4 gap-y-0 text-xs"
+            style={{ gridTemplateColumns: `repeat(${groups.length}, minmax(0, 1fr))` }}
+          >
+            {groups.map((group) => (
+              <div key={group.label}>
+                <p className="font-semibold text-gray-600 mb-1">{group.label}</p>
+                {group.items.map((item) => (
+                  <p key={item.short} className="text-gray-700 leading-relaxed">
+                    {item.short}: <span className="font-medium">{item.qty}</span>
+                  </p>
+                ))}
+              </div>
             ))}
           </div>
+          <p className="mt-2 text-xs font-semibold text-gray-700 border-t border-gray-100 pt-2">
+            Total: {total}
+          </p>
         </div>
       )}
 
-      {/* Observação */}
+      {/* ── Observação ─────────────────────────────────────────────────── */}
       {order.observacao && (
-        <div className="flex gap-2 text-xs text-orange-800 bg-orange-50 rounded-md px-3 py-2 border border-orange-100">
-          <FileText size={12} className="shrink-0 mt-0.5" />
-          <span>{order.observacao}</span>
+        <div className="border-t border-orange-100 bg-orange-50 px-4 py-2 text-xs text-orange-800">
+          <span className="font-semibold">Obs!</span> {order.observacao}
         </div>
       )}
 
-      {/* Telefone + Endereço */}
+      {/* ── Rodapé: telefone + endereço ────────────────────────────────── */}
       {(order.telefone || order.endereco) && (
-        <div className="text-xs text-gray-500 space-y-1 pt-2 border-t border-gray-100">
-          {order.telefone && (
-            <p className="flex items-center gap-1.5">
-              <Phone size={12} className="text-gray-400 shrink-0" />
-              {order.telefone}
-            </p>
-          )}
-          {order.endereco && (
-            <p className="flex items-center gap-1.5">
-              <MapPin size={12} className="text-gray-400 shrink-0" />
-              {order.endereco}
-            </p>
-          )}
+        <div className="grid grid-cols-2 divide-x divide-gray-100 border-t border-gray-100 text-xs text-gray-500">
+          <div className="px-4 py-2">{order.telefone || "—"}</div>
+          <div className="px-4 py-2">{order.endereco || "—"}</div>
         </div>
       )}
     </div>
