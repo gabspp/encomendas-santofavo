@@ -238,6 +238,42 @@ const server = createServer(async (req, res) => {
     return;
   }
 
+  if (url.pathname === "/api/update-date" && req.method === "POST") {
+    try {
+      const body = await new Promise((resolve, reject) => {
+        let data = "";
+        req.on("data", (chunk) => (data += chunk));
+        req.on("end", () => { try { resolve(JSON.parse(data)); } catch (e) { reject(e); } });
+        req.on("error", reject);
+      });
+      const { pageId, field, date } = body;
+      const NOTION_PROP = { producao: "Data PRODUÇÃO", entrega: "Data ENTREGA" };
+      if (!pageId || !field || !NOTION_PROP[field]) {
+        res.writeHead(400, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: "pageId e field válido são obrigatórios" }));
+        return;
+      }
+      if (date && !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+        res.writeHead(400, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: "Formato de data inválido" }));
+        return;
+      }
+      await notion.pages.update({
+        page_id: pageId,
+        properties: {
+          [NOTION_PROP[field]]: { date: date ? { start: date } : null },
+        },
+      });
+      res.writeHead(200, { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" });
+      res.end(JSON.stringify({ ok: true }));
+    } catch (err) {
+      console.error("Update date error:", err);
+      res.writeHead(500, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: err.message }));
+    }
+    return;
+  }
+
   res.writeHead(404);
   res.end("Not found");
 });

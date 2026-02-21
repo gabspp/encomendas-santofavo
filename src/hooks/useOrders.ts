@@ -123,6 +123,34 @@ export function useOrders() {
     [rawOrders]
   );
 
+  // Optimistic date update — reverts on error
+  const updateOrderDate = useCallback(
+    async (orderId: string, field: "producao" | "entrega", newDate: string) => {
+      const prev = rawOrders;
+      setRawOrders((orders) =>
+        orders.map((o) =>
+          o.id === orderId
+            ? field === "producao"
+              ? { ...o, dataProducao: newDate }
+              : { ...o, dataEntrega: newDate }
+            : o
+        )
+      );
+      try {
+        const res = await fetch("/api/update-date", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ pageId: orderId, field, date: newDate }),
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      } catch (err) {
+        setRawOrders(prev);
+        throw err;
+      }
+    },
+    [rawOrders]
+  );
+
   return {
     todayOrders,
     tomorrowOrders,
@@ -136,5 +164,6 @@ export function useOrders() {
     refresh: fetchOrders,
     updateOrderStatus,
     updateOrderEntrega,
+    updateOrderDate,
   };
 }

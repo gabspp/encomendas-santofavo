@@ -163,6 +163,67 @@ function EntregaDropdown({ orderId, current, onEntregaChange }: EntregaDropdownP
   );
 }
 
+// ── DateCell ──────────────────────────────────────────────────────────────────
+
+interface DateCellProps {
+  label: string;
+  isoDate: string; // "YYYY-MM-DD" or ""
+  orderId: string;
+  field: "producao" | "entrega";
+  onDateChange: (orderId: string, field: "producao" | "entrega", date: string) => Promise<void>;
+}
+
+function DateCell({ label, isoDate, orderId, field, onDateChange }: DateCellProps) {
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Focus input when editing starts
+  useEffect(() => {
+    if (editing) inputRef.current?.showPicker?.();
+  }, [editing]);
+
+  async function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const newDate = e.target.value; // "" or "YYYY-MM-DD"
+    setEditing(false);
+    if (newDate === isoDate) return;
+    setSaving(true);
+    try {
+      await onDateChange(orderId, field, newDate);
+    } catch {
+      // rollback feito no hook
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="px-4 py-2 relative">
+      <p className="text-gray-400 mb-0.5">{label}</p>
+      {editing ? (
+        <input
+          ref={inputRef}
+          type="date"
+          defaultValue={isoDate}
+          onChange={handleChange}
+          onBlur={() => setEditing(false)}
+          className="text-xs font-medium text-gray-700 border-b border-gray-300 bg-transparent outline-none w-full cursor-pointer"
+          autoFocus
+        />
+      ) : (
+        <button
+          onClick={() => setEditing(true)}
+          disabled={saving}
+          className={`text-left font-medium text-gray-700 hover:text-brand-brown transition-colors cursor-pointer w-full
+            ${saving ? "opacity-50 cursor-wait" : ""}`}
+        >
+          {formatBrDateWithDay(isoDate) || "—"}
+        </button>
+      )}
+    </div>
+  );
+}
+
 // ── Categoria (derivada do ícone do Notion) ──────────────────────────────────
 
 interface CategoryDef { label: string; className: string }
@@ -241,9 +302,10 @@ interface OrderCardProps {
   order: ParsedOrder;
   onStatusChange: (orderId: string, status: OrderStatus) => Promise<void>;
   onEntregaChange: (orderId: string, entrega: string) => Promise<void>;
+  onDateChange: (orderId: string, field: "producao" | "entrega", date: string) => Promise<void>;
 }
 
-export function OrderCard({ order, onStatusChange, onEntregaChange }: OrderCardProps) {
+export function OrderCard({ order, onStatusChange, onEntregaChange, onDateChange }: OrderCardProps) {
   const category = CATEGORY_MAP[order.icon] ?? null;
 
   const { pdm, bolos, outros, pdmTotal } = categorizeProducts(order.products);
@@ -293,14 +355,20 @@ export function OrderCard({ order, onStatusChange, onEntregaChange }: OrderCardP
 
       {/* ── Datas ──────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 divide-x divide-gray-100 border-t border-gray-100 text-xs">
-        <div className="px-4 py-2">
-          <p className="text-gray-400 mb-0.5">Produção</p>
-          <p className="font-medium text-gray-700">{formatBrDateWithDay(order.dataProducao)}</p>
-        </div>
-        <div className="px-4 py-2">
-          <p className="text-gray-400 mb-0.5">Entrega</p>
-          <p className="font-medium text-gray-700">{formatBrDateWithDay(order.dataEntrega) || "—"}</p>
-        </div>
+        <DateCell
+          label="Produção"
+          isoDate={order.dataProducao}
+          orderId={order.id}
+          field="producao"
+          onDateChange={onDateChange}
+        />
+        <DateCell
+          label="Entrega"
+          isoDate={order.dataEntrega}
+          orderId={order.id}
+          field="entrega"
+          onDateChange={onDateChange}
+        />
       </div>
 
       {/* ── Produtos ───────────────────────────────────────────────────── */}

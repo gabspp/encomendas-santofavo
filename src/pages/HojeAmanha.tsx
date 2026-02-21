@@ -18,6 +18,7 @@ export default function HojeAmanha() {
     refresh,
     updateOrderStatus,
     updateOrderEntrega,
+    updateOrderDate,
   } = useOrders();
 
   return (
@@ -87,6 +88,7 @@ export default function HojeAmanha() {
             emptyMessage="Nenhum pedido para hoje com este filtro."
             onStatusChange={updateOrderStatus}
             onEntregaChange={updateOrderEntrega}
+            onDateChange={updateOrderDate}
           />
           <DaySection
             title={`AMANHÃ${tomorrow ? ` (${formatBrDate(tomorrow)})` : ""}`}
@@ -94,6 +96,7 @@ export default function HojeAmanha() {
             emptyMessage="Nenhum pedido para amanhã com este filtro."
             onStatusChange={updateOrderStatus}
             onEntregaChange={updateOrderEntrega}
+            onDateChange={updateOrderDate}
           />
         </div>
       )}
