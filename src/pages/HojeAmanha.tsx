@@ -21,6 +21,7 @@ export default function HojeAmanha() {
     updateOrderStatus,
     updateOrderEntrega,
     updateOrderDate,
+    updateOrderRevenda,
   } = useOrders();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -104,6 +105,7 @@ export default function HojeAmanha() {
             onStatusChange={updateOrderStatus}
             onEntregaChange={updateOrderEntrega}
             onDateChange={updateOrderDate}
+            onRevendaChange={updateOrderRevenda}
           />
           <DaySection
             title={`AMANHÃ${tomorrow ? ` (${formatBrDate(tomorrow)})` : ""}`}
@@ -112,6 +114,7 @@ export default function HojeAmanha() {
             onStatusChange={updateOrderStatus}
             onEntregaChange={updateOrderEntrega}
             onDateChange={updateOrderDate}
+            onRevendaChange={updateOrderRevenda}
           />
         </div>
       )}

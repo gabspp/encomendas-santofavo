@@ -64,6 +64,7 @@ interface OrderDraftBody {
   entrega: string;
   metodoPagamento: string;
   taxaEntrega: string;
+  revenda: boolean;
   products: Record<string, number>;
   observacao: string;
 }
@@ -101,6 +102,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       "Data do Pedido": { date: { start: getBrazilToday() } },
       "Entrega": { select: { name: draft.entrega } },
       "Status": { status: { name: "Em aberto" } },
+      "Revenda": { checkbox: draft.revenda ?? false },
       ...productProps,
     };
 

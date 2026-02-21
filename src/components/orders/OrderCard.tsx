@@ -231,12 +231,50 @@ interface CategoryDef { label: string; className: string }
 const CATEGORY_MAP: Record<string, CategoryDef> = {
   "✔️": { label: "Pronto",       className: "bg-green-100 text-green-700" },
   "‼️": { label: "Atenção",      className: "bg-red-100 text-red-700" },
-  "🔁": { label: "Revenda",      className: "bg-blue-100 text-blue-700" },
   "🎂": { label: "Bolo",         className: "bg-pink-100 text-pink-700" },
   "🐰": { label: "Páscoa",       className: "bg-yellow-100 text-yellow-800" },
   "🎅": { label: "Natal",        className: "bg-red-100 text-red-700" },
   "✡️": { label: "Rosh Hashaná", className: "bg-amber-100 text-amber-700" },
 };
+
+// ── RevendaToggle ─────────────────────────────────────────────────────────────
+
+interface RevendaToggleProps {
+  orderId: string;
+  revenda: boolean;
+  onRevendaChange: (orderId: string, revenda: boolean) => Promise<void>;
+}
+
+function RevendaToggle({ orderId, revenda, onRevendaChange }: RevendaToggleProps) {
+  const [saving, setSaving] = useState(false);
+
+  async function handleToggle() {
+    setSaving(true);
+    try {
+      await onRevendaChange(orderId, !revenda);
+    } catch {
+      // rollback feito no hook
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <button
+      onClick={handleToggle}
+      disabled={saving}
+      title={revenda ? "Clique para remover Revenda" : "Clique para marcar como Revenda"}
+      className={`inline-block mt-1 text-xs font-medium px-2 py-0.5 rounded-full transition-opacity cursor-pointer
+        ${saving ? "opacity-50 cursor-wait" : "hover:opacity-70"}
+        ${revenda
+          ? "bg-blue-100 text-blue-700"
+          : "bg-gray-100 text-gray-400 border border-dashed border-gray-300"
+        }`}
+    >
+      Revenda
+    </button>
+  );
+}
 
 // ── Produtos: agrupamento e abreviação ───────────────────────────────────────
 
@@ -303,9 +341,10 @@ interface OrderCardProps {
   onStatusChange: (orderId: string, status: OrderStatus) => Promise<void>;
   onEntregaChange: (orderId: string, entrega: string) => Promise<void>;
   onDateChange: (orderId: string, field: "producao" | "entrega", date: string) => Promise<void>;
+  onRevendaChange: (orderId: string, revenda: boolean) => Promise<void>;
 }
 
-export function OrderCard({ order, onStatusChange, onEntregaChange, onDateChange }: OrderCardProps) {
+export function OrderCard({ order, onStatusChange, onEntregaChange, onDateChange, onRevendaChange }: OrderCardProps) {
   const category = CATEGORY_MAP[order.icon] ?? null;
 
   const { pdm, bolos, outros, pdmTotal } = categorizeProducts(order.products);
@@ -331,11 +370,18 @@ export function OrderCard({ order, onStatusChange, onEntregaChange, onDateChange
           <h3 className="font-bold text-gray-900 text-sm leading-tight truncate">
             {order.cliente || "—"}
           </h3>
-          {category && (
-            <span className={`inline-block mt-1 text-xs font-medium px-2 py-0.5 rounded-full ${category.className}`}>
-              {category.label}
-            </span>
-          )}
+          <div className="flex flex-wrap gap-1">
+            {category && (
+              <span className={`inline-block mt-1 text-xs font-medium px-2 py-0.5 rounded-full ${category.className}`}>
+                {category.label}
+              </span>
+            )}
+            <RevendaToggle
+              orderId={order.id}
+              revenda={order.revenda}
+              onRevendaChange={onRevendaChange}
+            />
+          </div>
         </div>
 
         {/* Entrega/Retirada | Loja + Status */}

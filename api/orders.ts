@@ -55,6 +55,11 @@ function parseStatus(prop: any): string {
   return prop?.status?.name ?? "";
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function parseCheckbox(prop: any): boolean {
+  return prop?.checkbox ?? false;
+}
+
 // Nomes exatos do Notion (alguns têm espaços extras)
 const PRODUCT_FIELDS = [
   "PDM Avulso",                             // formula → number
@@ -114,6 +119,7 @@ function parsePage(page: any) {
     dataPedido: parseDate(p["Data do Pedido"]),
     entrega: parseSelect(p["Entrega"]),
     status: parseStatus(p["Status"]),
+    revenda: parseCheckbox(p["Revenda"]),
     atendente: parseSelect(p["Atendente"]),  // select, não rich_text
     observacao: parseRichText(p["Observação!"]),
     telefone: parsePhone(p["Telefone"]),     // phone_number, não rich_text

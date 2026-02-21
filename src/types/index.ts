@@ -14,6 +14,7 @@ export interface ParsedOrder {
   dataPedido: string; // "YYYY-MM-DD"
   entrega: string; // "Entrega 26" | "Retirada 26" | "Entrega 248" | "Retirada 248"
   status: OrderStatus;
+  revenda: boolean;
   atendente: string;
   observacao: string;
   telefone: string;
@@ -34,6 +35,7 @@ export interface NewOrderDraft {
   entrega: string;
   metodoPagamento: string;
   taxaEntrega: string;   // string para input binding
+  revenda: boolean;
   products: Record<string, number>; // chave = nome exato do campo no Notion
   observacao: string;
 }

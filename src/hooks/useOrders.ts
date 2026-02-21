@@ -61,12 +61,11 @@ export function useOrders() {
       (filters.saida === "entrega" && order.entrega.startsWith("Entrega")) ||
       (filters.saida === "retirada" && order.entrega.startsWith("Retirada"));
 
-    // PDM = pedidos sem categoria especial (ícone não mapeado para Bolo/Revenda)
     const categoriaMatch =
       filters.categoria === "todas" ||
-      (filters.categoria === "pdm"    && order.icon !== "🎂" && order.icon !== "🔁") ||
-      (filters.categoria === "bolo"   && order.icon === "🎂") ||
-      (filters.categoria === "revenda" && order.icon === "🔁");
+      (filters.categoria === "pdm"     && !order.revenda && order.icon !== "🎂") ||
+      (filters.categoria === "bolo"    && order.icon === "🎂") ||
+      (filters.categoria === "revenda" && order.revenda);
 
     return lojaMatch && saidaMatch && categoriaMatch;
   });
@@ -151,6 +150,28 @@ export function useOrders() {
     [rawOrders]
   );
 
+  // Optimistic revenda toggle — reverts on error
+  const updateOrderRevenda = useCallback(
+    async (orderId: string, newRevenda: boolean) => {
+      const prev = rawOrders;
+      setRawOrders((orders) =>
+        orders.map((o) => (o.id === orderId ? { ...o, revenda: newRevenda } : o))
+      );
+      try {
+        const res = await fetch("/api/update-revenda", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ pageId: orderId, revenda: newRevenda }),
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      } catch (err) {
+        setRawOrders(prev);
+        throw err;
+      }
+    },
+    [rawOrders]
+  );
+
   return {
     todayOrders,
     tomorrowOrders,
@@ -165,5 +186,6 @@ export function useOrders() {
     updateOrderStatus,
     updateOrderEntrega,
     updateOrderDate,
+    updateOrderRevenda,
   };
 }

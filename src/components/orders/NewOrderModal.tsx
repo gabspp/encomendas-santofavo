@@ -78,6 +78,7 @@ const BLANK_DRAFT: NewOrderDraft = {
   entrega: "",
   metodoPagamento: "",
   taxaEntrega: "",
+  revenda: false,
   products: {},
   observacao: "",
 };
@@ -133,6 +134,28 @@ function StepCliente({ draft, setDraft, onCepBlur, cepLoading }: StepClienteProp
             </button>
           ))}
         </div>
+      </div>
+
+      {/* Revenda toggle */}
+      <div>
+        <p className={labelCls}>Tipo de pedido</p>
+        <button
+          onClick={() => setDraft((d) => ({ ...d, revenda: !d.revenda }))}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-lg border text-sm font-medium transition-colors cursor-pointer w-full ${
+            draft.revenda
+              ? "bg-blue-50 border-blue-300 text-blue-700"
+              : "border-gray-200 text-gray-500 hover:border-gray-300"
+          }`}
+        >
+          <span className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${draft.revenda ? "bg-blue-600 border-blue-600" : "border-gray-300"}`}>
+            {draft.revenda && (
+              <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 12 12">
+                <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            )}
+          </span>
+          Pedido de revenda
+        </button>
       </div>
 
       {/* Nome */}
@@ -419,6 +442,7 @@ function StepRevisao({ draft, setDraft, submitError }: StepRevisaoProps) {
       {/* Summary card */}
       <div className="bg-gray-50 rounded-xl p-4 space-y-2 text-sm">
         <Row label="Atendente" value={draft.atendente} />
+        {draft.revenda && <Row label="Tipo" value="Revenda" />}
         <Row label="Cliente" value={draft.cliente} />
         {draft.telefone && <Row label="Telefone" value={draft.telefone} />}
         {(draft.endereco || draft.numero) && (

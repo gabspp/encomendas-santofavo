@@ -55,6 +55,9 @@ function parsePhone(prop) {
 function parseStatus(prop) {
   return prop?.status?.name ?? "";
 }
+function parseCheckbox(prop) {
+  return prop?.checkbox ?? false;
+}
 
 // Nomes exatos do Notion (alguns têm espaços extras)
 const PRODUCT_FIELDS = [
@@ -114,6 +117,7 @@ function parsePage(page) {
     dataPedido: parseDate(p["Data do Pedido"]),
     entrega: parseSelect(p["Entrega"]),
     status: parseStatus(p["Status"]),
+    revenda: parseCheckbox(p["Revenda"]),
     atendente: parseSelect(p["Atendente"]),  // select, não rich_text
     observacao: parseRichText(p["Observação!"]),
     telefone: parsePhone(p["Telefone"]),     // phone_number, não rich_text
@@ -238,6 +242,34 @@ const server = createServer(async (req, res) => {
     return;
   }
 
+  if (url.pathname === "/api/update-revenda" && req.method === "POST") {
+    try {
+      const body = await new Promise((resolve, reject) => {
+        let data = "";
+        req.on("data", (chunk) => (data += chunk));
+        req.on("end", () => { try { resolve(JSON.parse(data)); } catch (e) { reject(e); } });
+        req.on("error", reject);
+      });
+      const { pageId, revenda } = body;
+      if (!pageId || typeof revenda !== "boolean") {
+        res.writeHead(400, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: "pageId e revenda (boolean) são obrigatórios" }));
+        return;
+      }
+      await notion.pages.update({
+        page_id: pageId,
+        properties: { Revenda: { checkbox: revenda } },
+      });
+      res.writeHead(200, { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" });
+      res.end(JSON.stringify({ ok: true }));
+    } catch (err) {
+      console.error("Update revenda error:", err);
+      res.writeHead(500, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: err.message }));
+    }
+    return;
+  }
+
   if (url.pathname === "/api/form-options" && req.method === "GET") {
     try {
       const db = await notion.databases.retrieve({ database_id: DB_ID });
@@ -302,6 +334,7 @@ const server = createServer(async (req, res) => {
         "Data do Pedido": { date: { start: today } },
         "Entrega": { select: { name: draft.entrega } },
         "Status": { status: { name: "Em aberto" } },
+        "Revenda": { checkbox: draft.revenda ?? false },
         ...productProps,
       };
       if (draft.telefone?.trim()) properties["Telefone"] = { phone_number: draft.telefone.trim() };
