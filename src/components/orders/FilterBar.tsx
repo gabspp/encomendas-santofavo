@@ -23,7 +23,7 @@ function PillGroup<T extends string>({
 }) {
   return (
     <div className="flex items-center gap-2">
-      <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider w-8 shrink-0">
+      <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider shrink-0">
         {label}
       </span>
       <div className="flex gap-1">
@@ -52,21 +52,32 @@ export function FilterBar({ filters, onChange }: FilterBarProps) {
         label="Loja"
         options={[
           { value: "todas", label: "Todas" },
-          { value: "26", label: "26B" },
-          { value: "248", label: "CONDOR 248" },
+          { value: "26",    label: "26" },
+          { value: "248",   label: "248" },
         ]}
         value={filters.loja}
         onChange={(v) => onChange({ ...filters, loja: v })}
       />
-      <PillGroup<FilterState["tipo"]>
-        label="Tipo"
+      <PillGroup<FilterState["categoria"]>
+        label="Categoria"
         options={[
-          { value: "todos", label: "Todos" },
-          { value: "entregas", label: "🚚 Entregas" },
-          { value: "retiradas", label: "📦 Retiradas" },
+          { value: "todas",   label: "Todas" },
+          { value: "pdm",     label: "PDM" },
+          { value: "bolo",    label: "Bolo" },
+          { value: "revenda", label: "Revenda" },
         ]}
-        value={filters.tipo}
-        onChange={(v) => onChange({ ...filters, tipo: v })}
+        value={filters.categoria}
+        onChange={(v) => onChange({ ...filters, categoria: v })}
+      />
+      <PillGroup<FilterState["saida"]>
+        label="Saída"
+        options={[
+          { value: "todos",    label: "Todos" },
+          { value: "entrega",  label: "Entrega" },
+          { value: "retirada", label: "Retirada" },
+        ]}
+        value={filters.saida}
+        onChange={(v) => onChange({ ...filters, saida: v })}
       />
     </div>
   );

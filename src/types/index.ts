@@ -23,5 +23,6 @@ export interface ParsedOrder {
 
 export interface FilterState {
   loja: "todas" | "26" | "248";
-  tipo: "todos" | "entregas" | "retiradas";
+  saida: "todos" | "entrega" | "retirada";
+  categoria: "todas" | "pdm" | "bolo" | "revenda";
 }

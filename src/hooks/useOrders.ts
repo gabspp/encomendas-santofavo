@@ -12,7 +12,8 @@ export function useOrders() {
   const [lastFetched, setLastFetched] = useState<Date | null>(null);
   const [filters, setFilters] = useState<FilterState>({
     loja: "todas",
-    tipo: "todos",
+    saida: "todos",
+    categoria: "todas",
   });
 
   const fetchOrders = useCallback(async () => {
@@ -53,12 +54,21 @@ export function useOrders() {
   const filteredOrders = rawOrders.filter((order) => {
     const lojaMatch =
       filters.loja === "todas" ||
-      order.entrega.includes(filters.loja); // "26" bate em "26B", "248" bate em "CONDOR 248"
-    const tipoMatch =
-      filters.tipo === "todos" ||
-      (filters.tipo === "entregas" && order.entrega.startsWith("Entrega")) ||
-      (filters.tipo === "retiradas" && order.entrega.startsWith("Retirada"));
-    return lojaMatch && tipoMatch;
+      order.entrega.includes(filters.loja);
+
+    const saidaMatch =
+      filters.saida === "todos" ||
+      (filters.saida === "entrega" && order.entrega.startsWith("Entrega")) ||
+      (filters.saida === "retirada" && order.entrega.startsWith("Retirada"));
+
+    // PDM = pedidos sem categoria especial (ícone não mapeado para Bolo/Revenda)
+    const categoriaMatch =
+      filters.categoria === "todas" ||
+      (filters.categoria === "pdm"    && order.icon !== "🎂" && order.icon !== "🔁") ||
+      (filters.categoria === "bolo"   && order.icon === "🎂") ||
+      (filters.categoria === "revenda" && order.icon === "🔁");
+
+    return lojaMatch && saidaMatch && categoriaMatch;
   });
 
   const todayOrders = filteredOrders.filter((o) => o.dataProducao === today);
