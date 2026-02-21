@@ -8,6 +8,7 @@ export type OrderStatus = "Em aberto" | "Confirmado" | "Pronto" | "Entregue" | "
 export interface ParsedOrder {
   id: string;
   cliente: string;
+  icon: string; // emoji do ícone da página no Notion
   dataProducao: string; // "YYYY-MM-DD"
   dataEntrega: string; // "YYYY-MM-DD"
   dataPedido: string; // "YYYY-MM-DD"

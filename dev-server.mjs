@@ -108,6 +108,7 @@ function parsePage(page) {
   return {
     id: page.id,
     cliente: parseTitle(p["Cliente"]),
+    icon: page.icon?.type === "emoji" ? page.icon.emoji : "",
     dataProducao: parseDate(p["Data PRODUÇÃO"]),
     dataEntrega: parseDate(p["Data ENTREGA"]),
     dataPedido: parseDate(p["Data do Pedido"]),
