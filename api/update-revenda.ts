@@ -18,7 +18,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     await notion.pages.update({
       page_id: pageId,
       properties: {
-        Revenda: { checkbox: revenda },
+        "É Revenda?": { checkbox: revenda },
       },
     });
     return res.json({ ok: true });

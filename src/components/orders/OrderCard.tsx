@@ -237,44 +237,6 @@ const CATEGORY_MAP: Record<string, CategoryDef> = {
   "✡️": { label: "Rosh Hashaná", className: "bg-amber-100 text-amber-700" },
 };
 
-// ── RevendaToggle ─────────────────────────────────────────────────────────────
-
-interface RevendaToggleProps {
-  orderId: string;
-  revenda: boolean;
-  onRevendaChange: (orderId: string, revenda: boolean) => Promise<void>;
-}
-
-function RevendaToggle({ orderId, revenda, onRevendaChange }: RevendaToggleProps) {
-  const [saving, setSaving] = useState(false);
-
-  async function handleToggle() {
-    setSaving(true);
-    try {
-      await onRevendaChange(orderId, !revenda);
-    } catch {
-      // rollback feito no hook
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  return (
-    <button
-      onClick={handleToggle}
-      disabled={saving}
-      title={revenda ? "Clique para remover Revenda" : "Clique para marcar como Revenda"}
-      className={`inline-block mt-1 text-xs font-medium px-2 py-0.5 rounded-full transition-opacity cursor-pointer
-        ${saving ? "opacity-50 cursor-wait" : "hover:opacity-70"}
-        ${revenda
-          ? "bg-blue-100 text-blue-700"
-          : "bg-gray-100 text-gray-400 border border-dashed border-gray-300"
-        }`}
-    >
-      Revenda
-    </button>
-  );
-}
 
 // ── Produtos: agrupamento e abreviação ───────────────────────────────────────
 
@@ -341,10 +303,9 @@ interface OrderCardProps {
   onStatusChange: (orderId: string, status: OrderStatus) => Promise<void>;
   onEntregaChange: (orderId: string, entrega: string) => Promise<void>;
   onDateChange: (orderId: string, field: "producao" | "entrega", date: string) => Promise<void>;
-  onRevendaChange: (orderId: string, revenda: boolean) => Promise<void>;
 }
 
-export function OrderCard({ order, onStatusChange, onEntregaChange, onDateChange, onRevendaChange }: OrderCardProps) {
+export function OrderCard({ order, onStatusChange, onEntregaChange, onDateChange }: OrderCardProps) {
   const category = CATEGORY_MAP[order.icon] ?? null;
 
   const { pdm, bolos, outros, pdmTotal } = categorizeProducts(order.products);
@@ -376,11 +337,11 @@ export function OrderCard({ order, onStatusChange, onEntregaChange, onDateChange
                 {category.label}
               </span>
             )}
-            <RevendaToggle
-              orderId={order.id}
-              revenda={order.revenda}
-              onRevendaChange={onRevendaChange}
-            />
+            {order.revenda && (
+              <span className="inline-block mt-1 text-xs font-medium px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
+                Revenda
+              </span>
+            )}
           </div>
         </div>
 

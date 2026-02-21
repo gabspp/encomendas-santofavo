@@ -3,8 +3,9 @@ import { useOrders } from "@/hooks/useOrders";
 import { FilterBar } from "@/components/orders/FilterBar";
 import { DaySection } from "@/components/orders/DaySection";
 import { NewOrderModal } from "@/components/orders/NewOrderModal";
+import { ChatOrderModal } from "@/components/orders/ChatOrderModal";
 import { formatBrDate } from "@/utils/notion";
-import { RefreshCw, Plus } from "lucide-react";
+import { RefreshCw, Plus, MessageSquare } from "lucide-react";
 
 export default function HojeAmanha() {
   const {
@@ -21,10 +22,10 @@ export default function HojeAmanha() {
     updateOrderStatus,
     updateOrderEntrega,
     updateOrderDate,
-    updateOrderRevenda,
   } = useOrders();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isChatOpen, setIsChatOpen] = useState(false);
 
   return (
     <div className="space-y-6">
@@ -40,6 +41,15 @@ export default function HojeAmanha() {
         </div>
 
         <div className="flex items-center gap-3">
+          {/* Chat button */}
+          <button
+            onClick={() => setIsChatOpen(true)}
+            className="flex items-center gap-1.5 text-sm font-medium border border-brand-brown text-brand-brown px-3 py-1.5 rounded-lg hover:bg-brand-brown hover:text-white transition-colors cursor-pointer"
+          >
+            <MessageSquare className="h-4 w-4" />
+            Chat
+          </button>
+
           {/* New order button */}
           <button
             onClick={() => setIsModalOpen(true)}
@@ -105,7 +115,6 @@ export default function HojeAmanha() {
             onStatusChange={updateOrderStatus}
             onEntregaChange={updateOrderEntrega}
             onDateChange={updateOrderDate}
-            onRevendaChange={updateOrderRevenda}
           />
           <DaySection
             title={`AMANHÃ${tomorrow ? ` (${formatBrDate(tomorrow)})` : ""}`}
@@ -114,9 +123,19 @@ export default function HojeAmanha() {
             onStatusChange={updateOrderStatus}
             onEntregaChange={updateOrderEntrega}
             onDateChange={updateOrderDate}
-            onRevendaChange={updateOrderRevenda}
           />
         </div>
+      )}
+
+      {/* Chat modal */}
+      {isChatOpen && (
+        <ChatOrderModal
+          onClose={() => setIsChatOpen(false)}
+          onCreated={() => {
+            setIsChatOpen(false);
+            void refresh();
+          }}
+        />
       )}
 
       {/* New order modal */}

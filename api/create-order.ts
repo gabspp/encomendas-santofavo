@@ -102,7 +102,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       "Data do Pedido": { date: { start: getBrazilToday() } },
       "Entrega": { select: { name: draft.entrega } },
       "Status": { status: { name: "Em aberto" } },
-      "Revenda": { checkbox: draft.revenda ?? false },
+      "É Revenda?": { checkbox: draft.revenda ?? false },
       ...productProps,
     };
 
