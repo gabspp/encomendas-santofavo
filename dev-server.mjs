@@ -180,6 +180,35 @@ const server = createServer(async (req, res) => {
     return;
   }
 
+  if (url.pathname === "/api/update-status" && req.method === "POST") {
+    try {
+      const body = await new Promise((resolve, reject) => {
+        let data = "";
+        req.on("data", (chunk) => (data += chunk));
+        req.on("end", () => { try { resolve(JSON.parse(data)); } catch (e) { reject(e); } });
+        req.on("error", reject);
+      });
+      const { pageId, status } = body;
+      const VALID = ["Em aberto", "Confirmado", "Pronto", "Entregue"];
+      if (!pageId || !status || !VALID.includes(status)) {
+        res.writeHead(400, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: "pageId e status válido são obrigatórios" }));
+        return;
+      }
+      await notion.pages.update({
+        page_id: pageId,
+        properties: { Status: { status: { name: status } } },
+      });
+      res.writeHead(200, { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" });
+      res.end(JSON.stringify({ ok: true }));
+    } catch (err) {
+      console.error("Update error:", err);
+      res.writeHead(500, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: err.message }));
+    }
+    return;
+  }
+
   res.writeHead(404);
   res.end("Not found");
 });

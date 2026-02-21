@@ -1,7 +1,10 @@
-import type { ParsedOrder, ProductItem } from "@/types";
+import { useState, useRef, useEffect } from "react";
+import type { ParsedOrder, ProductItem, OrderStatus } from "@/types";
 import { formatBrDateWithDay } from "@/utils/notion";
 
 // ── Status ───────────────────────────────────────────────────────────────────
+
+const STATUS_OPTIONS: OrderStatus[] = ["Em aberto", "Confirmado", "Pronto", "Entregue"];
 
 const STATUS_STYLES: Record<string, string> = {
   "Em aberto": "bg-gray-100 text-gray-500",
@@ -9,6 +12,72 @@ const STATUS_STYLES: Record<string, string> = {
   "Pronto":     "bg-green-100 text-green-700",
   "Entregue":   "bg-gray-200 text-gray-400",
 };
+
+interface StatusDropdownProps {
+  orderId: string;
+  current: OrderStatus;
+  onStatusChange: (orderId: string, status: OrderStatus) => Promise<void>;
+}
+
+function StatusDropdown({ orderId, current, onStatusChange }: StatusDropdownProps) {
+  const [open, setOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  // Fecha ao clicar fora
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  async function handleSelect(status: OrderStatus) {
+    if (status === current) { setOpen(false); return; }
+    setSaving(true);
+    setOpen(false);
+    try {
+      await onStatusChange(orderId, status);
+    } catch {
+      // erro já tratado no hook (rollback)
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        disabled={saving}
+        className={`text-xs font-medium px-2 py-0.5 rounded-full transition-opacity cursor-pointer
+          ${STATUS_STYLES[current] ?? "bg-gray-100 text-gray-500"}
+          ${saving ? "opacity-50 cursor-wait" : "hover:opacity-80"}`}
+      >
+        {current || "—"}
+      </button>
+
+      {open && (
+        <div className="absolute right-0 mt-1 z-50 bg-white border border-gray-200 rounded-lg shadow-lg py-1 min-w-32">
+          {STATUS_OPTIONS.map((s) => (
+            <button
+              key={s}
+              onClick={() => handleSelect(s)}
+              className={`w-full text-left text-xs px-3 py-1.5 hover:bg-gray-50 transition-colors
+                ${s === current ? "font-semibold" : "font-normal"}`}
+            >
+              <span className={`inline-block px-1.5 py-0.5 rounded-full ${STATUS_STYLES[s]}`}>
+                {s}
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 // ── Categoria (derivada do ícone do Notion) ──────────────────────────────────
 
@@ -86,9 +155,10 @@ function categorizeProducts(products: ProductItem[]): {
 
 interface OrderCardProps {
   order: ParsedOrder;
+  onStatusChange: (orderId: string, status: OrderStatus) => Promise<void>;
 }
 
-export function OrderCard({ order }: OrderCardProps) {
+export function OrderCard({ order, onStatusChange }: OrderCardProps) {
   const category = CATEGORY_MAP[order.icon] ?? null;
 
   const isEntrega = order.entrega.startsWith("Entrega");
@@ -135,11 +205,11 @@ export function OrderCard({ order }: OrderCardProps) {
             {isEntrega ? "Entrega" : "Retirada"}
             {loja && <span className={`font-normal ml-1 ${lojaClass}`}>{loja}</span>}
           </p>
-          {order.status && (
-            <span className={`inline-block mt-1 text-xs font-medium px-2 py-0.5 rounded-full ${STATUS_STYLES[order.status] ?? "bg-gray-100 text-gray-500"}`}>
-              {order.status}
-            </span>
-          )}
+          <StatusDropdown
+            orderId={order.id}
+            current={order.status}
+            onStatusChange={onStatusChange}
+          />
         </div>
       </div>
 

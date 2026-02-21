@@ -1,13 +1,14 @@
-import type { ParsedOrder } from "@/types";
+import type { ParsedOrder, OrderStatus } from "@/types";
 import { OrderCard } from "./OrderCard";
 
 interface DaySectionProps {
   title: string;
   orders: ParsedOrder[];
   emptyMessage: string;
+  onStatusChange: (orderId: string, status: OrderStatus) => Promise<void>;
 }
 
-export function DaySection({ title, orders, emptyMessage }: DaySectionProps) {
+export function DaySection({ title, orders, emptyMessage, onStatusChange }: DaySectionProps) {
   return (
     <section className="space-y-3">
       <div className="flex items-center gap-3">
@@ -26,7 +27,7 @@ export function DaySection({ title, orders, emptyMessage }: DaySectionProps) {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
           {orders.map((order) => (
-            <OrderCard key={order.id} order={order} />
+            <OrderCard key={order.id} order={order} onStatusChange={onStatusChange} />
           ))}
         </div>
       )}

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import type { ParsedOrder, FilterState } from "@/types";
+import type { ParsedOrder, FilterState, OrderStatus } from "@/types";
 
 const REFRESH_MS = 2 * 60 * 1000; // 2 minutes
 
@@ -76,6 +76,31 @@ export function useOrders() {
     (o) => o.dataProducao === tomorrow
   );
 
+  // Optimistic status update — reverts on error
+  const updateOrderStatus = useCallback(
+    async (orderId: string, newStatus: OrderStatus) => {
+      // Snapshot for rollback
+      const prev = rawOrders;
+      // Optimistic update
+      setRawOrders((orders) =>
+        orders.map((o) => (o.id === orderId ? { ...o, status: newStatus } : o))
+      );
+      try {
+        const res = await fetch("/api/update-status", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ pageId: orderId, status: newStatus }),
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      } catch (err) {
+        // Rollback
+        setRawOrders(prev);
+        throw err;
+      }
+    },
+    [rawOrders]
+  );
+
   return {
     todayOrders,
     tomorrowOrders,
@@ -87,5 +112,6 @@ export function useOrders() {
     filters,
     setFilters,
     refresh: fetchOrders,
+    updateOrderStatus,
   };
 }
