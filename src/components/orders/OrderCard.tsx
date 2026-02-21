@@ -83,14 +83,15 @@ export function OrderCard({ order }: OrderCardProps) {
   const category = CATEGORY_MAP[order.icon] ?? null;
 
   const isEntrega = order.entrega.startsWith("Entrega");
-  const loja = order.entrega.includes("248")
-    ? "CONDOR 248"
-    : order.entrega.includes("26")
-      ? "26B"
+  const loja = order.entrega.includes("248") ? "248" : order.entrega.includes("26") ? "26" : "";
+  const lojaClass = loja === "248"
+    ? "text-brand-brown font-bold"
+    : loja === "26"
+      ? "text-brand-yellow font-bold"
       : "";
 
   const { pdm, bolos, outros } = categorizeProducts(order.products);
-  const total = order.products.reduce((sum, p) => sum + p.qty, 0);
+  const pdmTotal = pdm.reduce((sum, p) => sum + p.qty, 0);
   const groups = [
     { label: "PDM",   items: pdm },
     { label: "Bolos", items: bolos },
@@ -124,7 +125,7 @@ export function OrderCard({ order }: OrderCardProps) {
         <div className="shrink-0 text-right pt-0.5">
           <p className="text-sm font-semibold text-gray-800">
             {isEntrega ? "Entrega" : "Retirada"}
-            {loja && <span className="text-gray-400 font-normal"> · {loja}</span>}
+            {loja && <span className={`font-normal ml-1 ${lojaClass}`}>{loja}</span>}
           </p>
           {order.status && (
             <span className={`inline-block mt-1 text-xs font-medium px-2 py-0.5 rounded-full ${STATUS_STYLES[order.status] ?? "bg-gray-100 text-gray-500"}`}>
@@ -167,9 +168,11 @@ export function OrderCard({ order }: OrderCardProps) {
               </div>
             ))}
           </div>
-          <p className="mt-2 text-xs font-semibold text-gray-700 border-t border-gray-100 pt-2">
-            Total: {total}
-          </p>
+          {pdm.length > 0 && (
+            <p className="mt-2 text-xs font-semibold text-gray-700 border-t border-gray-100 pt-2">
+              Total PDM: {pdmTotal}
+            </p>
+          )}
         </div>
       )}
 
