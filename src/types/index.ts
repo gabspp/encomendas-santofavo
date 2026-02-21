@@ -3,13 +3,16 @@ export interface ProductItem {
   qty: number;
 }
 
+export type OrderStatus = "Em aberto" | "Confirmado" | "Pronto" | "Entregue" | "";
+
 export interface ParsedOrder {
   id: string;
   cliente: string;
   dataProducao: string; // "YYYY-MM-DD"
   dataEntrega: string; // "YYYY-MM-DD"
   dataPedido: string; // "YYYY-MM-DD"
-  entrega: string; // "Retirada Loja 26" | "Retirada Loja 248" | "Entrega Loja 26" | "Entrega Loja 248"
+  entrega: string; // "Entrega 26" | "Retirada 26" | "Entrega 248" | "Retirada 248"
+  status: OrderStatus;
   atendente: string;
   observacao: string;
   telefone: string;

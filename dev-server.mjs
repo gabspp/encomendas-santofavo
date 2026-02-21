@@ -52,6 +52,9 @@ function parseDate(prop) {
 function parsePhone(prop) {
   return prop?.phone_number ?? "";
 }
+function parseStatus(prop) {
+  return prop?.status?.name ?? "";
+}
 
 // Nomes exatos do Notion (alguns têm espaços extras)
 const PRODUCT_FIELDS = [
@@ -109,6 +112,7 @@ function parsePage(page) {
     dataEntrega: parseDate(p["Data ENTREGA"]),
     dataPedido: parseDate(p["Data do Pedido"]),
     entrega: parseSelect(p["Entrega"]),
+    status: parseStatus(p["Status"]),
     atendente: parseSelect(p["Atendente"]),  // select, não rich_text
     observacao: parseRichText(p["Observação!"]),
     telefone: parsePhone(p["Telefone"]),     // phone_number, não rich_text

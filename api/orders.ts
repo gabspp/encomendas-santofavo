@@ -50,6 +50,11 @@ function parsePhone(prop: any): string {
   return prop?.phone_number ?? "";
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function parseStatus(prop: any): string {
+  return prop?.status?.name ?? "";
+}
+
 // Nomes exatos do Notion (alguns têm espaços extras)
 const PRODUCT_FIELDS = [
   "PDM Avulso",                             // formula → number
@@ -107,6 +112,7 @@ function parsePage(page: any) {
     dataEntrega: parseDate(p["Data ENTREGA"]),
     dataPedido: parseDate(p["Data do Pedido"]),
     entrega: parseSelect(p["Entrega"]),
+    status: parseStatus(p["Status"]),
     atendente: parseSelect(p["Atendente"]),  // select, não rich_text
     observacao: parseRichText(p["Observação!"]),
     telefone: parsePhone(p["Telefone"]),     // phone_number, não rich_text

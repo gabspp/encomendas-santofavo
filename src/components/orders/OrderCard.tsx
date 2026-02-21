@@ -1,6 +1,13 @@
 import type { ParsedOrder } from "@/types";
 import { formatBrDateFull } from "@/utils/notion";
 
+const STATUS_STYLES: Record<string, string> = {
+  "Em aberto": "bg-gray-100 text-gray-500",
+  "Confirmado": "bg-blue-100 text-blue-700",
+  "Pronto":     "bg-green-100 text-green-700",
+  "Entregue":   "bg-gray-200 text-gray-400",
+};
+
 function getDeliveryInfo(entrega: string) {
   const isEntrega = entrega.startsWith("Entrega");
   const loja = entrega.includes("248")
@@ -36,6 +43,13 @@ export function OrderCard({ order }: OrderCardProps) {
           👤 {order.cliente || "—"}
         </h3>
         <div className="flex items-center gap-1 shrink-0">
+          {order.status && (
+            <span
+              className={`text-xs font-medium px-2 py-0.5 rounded-full ${STATUS_STYLES[order.status] ?? "bg-gray-100 text-gray-500"}`}
+            >
+              {order.status}
+            </span>
+          )}
           <span className="text-base">{delivery.icon}</span>
           {delivery.loja && (
             <span
