@@ -52,13 +52,22 @@ function categorizeProducts(products: ProductItem[]): {
   pdm: ShortItem[];
   bolos: ShortItem[];
   outros: ShortItem[];
+  pdmTotal: number;
 } {
   const pdm: ShortItem[] = [];
   const bolos: ShortItem[] = [];
   const outros: ShortItem[] = [];
+  let pdmTotal = 0;
 
   for (const item of products) {
     const name = item.name; // já vem trimado da API
+
+    // "PDM Avulso" é a fórmula que soma todos os sabores — usamos como total, não exibimos
+    if (name === "PDM Avulso") {
+      pdmTotal = item.qty;
+      continue;
+    }
+
     if (name.startsWith("Bolo")) {
       // "Bolo PDM G" → "PDM G" | "Bolo de Mel Mini" → "Mel Mini"
       const short = name.replace(/^Bolo\s+(de\s+)?/i, "");
@@ -70,7 +79,7 @@ function categorizeProducts(products: ProductItem[]): {
     }
   }
 
-  return { pdm, bolos, outros };
+  return { pdm, bolos, outros, pdmTotal };
 }
 
 // ── Component ────────────────────────────────────────────────────────────────
@@ -90,8 +99,7 @@ export function OrderCard({ order }: OrderCardProps) {
       ? "text-brand-yellow font-bold"
       : "";
 
-  const { pdm, bolos, outros } = categorizeProducts(order.products);
-  const pdmTotal = pdm.reduce((sum, p) => sum + p.qty, 0);
+  const { pdm, bolos, outros, pdmTotal } = categorizeProducts(order.products);
   const groups = [
     { label: "PDM",   items: pdm },
     { label: "Bolos", items: bolos },
