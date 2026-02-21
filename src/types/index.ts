@@ -26,7 +26,9 @@ export interface NewOrderDraft {
   cliente: string;
   telefone: string;
   cep: string;
-  endereco: string;
+  endereco: string;      // rua (auto-preenchida pelo CEP)
+  numero: string;        // número do endereço
+  complemento: string;   // complemento (opcional)
   dataEntrega: string;   // "YYYY-MM-DD"
   dataProducao: string;  // "YYYY-MM-DD"
   entrega: string;

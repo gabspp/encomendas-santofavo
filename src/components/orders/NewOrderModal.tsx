@@ -71,6 +71,8 @@ const BLANK_DRAFT: NewOrderDraft = {
   telefone: "",
   cep: "",
   endereco: "",
+  numero: "",
+  complemento: "",
   dataEntrega: "",
   dataProducao: "",
   entrega: "",
@@ -178,16 +180,40 @@ function StepCliente({ draft, setDraft, onCepBlur, cepLoading }: StepClienteProp
         <p className="text-xs text-gray-400 mt-1">Preenche o endereço automaticamente ao sair do campo.</p>
       </div>
 
-      {/* Endereço */}
+      {/* Rua */}
       <div>
-        <label className={labelCls}>Endereço</label>
+        <label className={labelCls}>Rua</label>
         <input
           type="text"
           value={draft.endereco}
           onChange={(e) => setDraft((d) => ({ ...d, endereco: e.target.value }))}
           className={inputCls}
-          placeholder="Rua, número, complemento — Bairro"
+          placeholder="Nome da rua"
         />
+      </div>
+
+      {/* Número + Complemento */}
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className={labelCls}>Número</label>
+          <input
+            type="text"
+            value={draft.numero}
+            onChange={(e) => setDraft((d) => ({ ...d, numero: e.target.value }))}
+            className={inputCls}
+            placeholder="123"
+          />
+        </div>
+        <div>
+          <label className={labelCls}>Complemento</label>
+          <input
+            type="text"
+            value={draft.complemento}
+            onChange={(e) => setDraft((d) => ({ ...d, complemento: e.target.value }))}
+            className={inputCls}
+            placeholder="Apto 4 (opcional)"
+          />
+        </div>
       </div>
     </div>
   );
@@ -395,7 +421,13 @@ function StepRevisao({ draft, setDraft, submitError }: StepRevisaoProps) {
         <Row label="Atendente" value={draft.atendente} />
         <Row label="Cliente" value={draft.cliente} />
         {draft.telefone && <Row label="Telefone" value={draft.telefone} />}
-        {draft.endereco && <Row label="Endereço" value={draft.endereco} wrap />}
+        {(draft.endereco || draft.numero) && (
+          <Row
+            label="Endereço"
+            value={[draft.endereco, draft.numero, draft.complemento].filter(Boolean).join(", ")}
+            wrap
+          />
+        )}
         <Row label="Data de entrega" value={formatBrDateWithDay(draft.dataEntrega)} />
         <Row label="Data de produção" value={formatBrDateWithDay(draft.dataProducao)} />
         <Row label="Saída" value={draft.entrega} />
@@ -517,7 +549,7 @@ export function NewOrderModal({ onClose, onCreated }: NewOrderModalProps) {
       if (!data.erro && data.logradouro) {
         setDraft((d) => ({
           ...d,
-          endereco: `${data.logradouro}, ${data.bairro} — ${data.localidade}/${data.uf}`,
+          endereco: data.logradouro ?? "",
         }));
       }
     } catch {
@@ -550,7 +582,15 @@ export function NewOrderModal({ onClose, onCreated }: NewOrderModalProps) {
       const res = await fetch("/api/create-order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ draft }),
+        body: JSON.stringify({
+          draft: {
+            ...draft,
+            // Combine address parts into a single string for the API
+            endereco: [draft.endereco, draft.numero, draft.complemento]
+              .filter((s) => s.trim())
+              .join(", "),
+          },
+        }),
       });
       if (!res.ok) {
         const data = await res.json() as { error?: string };
