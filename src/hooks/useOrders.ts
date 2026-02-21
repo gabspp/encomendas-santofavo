@@ -76,6 +76,28 @@ export function useOrders() {
     (o) => o.dataProducao === tomorrow
   );
 
+  // Optimistic entrega update — reverts on error
+  const updateOrderEntrega = useCallback(
+    async (orderId: string, newEntrega: string) => {
+      const prev = rawOrders;
+      setRawOrders((orders) =>
+        orders.map((o) => (o.id === orderId ? { ...o, entrega: newEntrega } : o))
+      );
+      try {
+        const res = await fetch("/api/update-entrega", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ pageId: orderId, entrega: newEntrega }),
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      } catch (err) {
+        setRawOrders(prev);
+        throw err;
+      }
+    },
+    [rawOrders]
+  );
+
   // Optimistic status update — reverts on error
   const updateOrderStatus = useCallback(
     async (orderId: string, newStatus: OrderStatus) => {
@@ -113,5 +135,6 @@ export function useOrders() {
     setFilters,
     refresh: fetchOrders,
     updateOrderStatus,
+    updateOrderEntrega,
   };
 }

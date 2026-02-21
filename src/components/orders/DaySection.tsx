@@ -6,9 +6,10 @@ interface DaySectionProps {
   orders: ParsedOrder[];
   emptyMessage: string;
   onStatusChange: (orderId: string, status: OrderStatus) => Promise<void>;
+  onEntregaChange: (orderId: string, entrega: string) => Promise<void>;
 }
 
-export function DaySection({ title, orders, emptyMessage, onStatusChange }: DaySectionProps) {
+export function DaySection({ title, orders, emptyMessage, onStatusChange, onEntregaChange }: DaySectionProps) {
   return (
     <section className="space-y-3">
       <div className="flex items-center gap-3">
@@ -27,7 +28,7 @@ export function DaySection({ title, orders, emptyMessage, onStatusChange }: DayS
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
           {orders.map((order) => (
-            <OrderCard key={order.id} order={order} onStatusChange={onStatusChange} />
+            <OrderCard key={order.id} order={order} onStatusChange={onStatusChange} onEntregaChange={onEntregaChange} />
           ))}
         </div>
       )}

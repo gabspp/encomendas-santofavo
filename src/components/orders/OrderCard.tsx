@@ -79,6 +79,90 @@ function StatusDropdown({ orderId, current, onStatusChange }: StatusDropdownProp
   );
 }
 
+// ── Entrega ───────────────────────────────────────────────────────────────────
+
+const ENTREGA_OPTIONS = [
+  "Entrega 26",
+  "Retirada 26",
+  "Entrega 248",
+  "Retirada 248",
+] as const;
+
+type EntregaOption = typeof ENTREGA_OPTIONS[number];
+
+interface EntregaDropdownProps {
+  orderId: string;
+  current: string;
+  onEntregaChange: (orderId: string, entrega: string) => Promise<void>;
+}
+
+function EntregaDropdown({ orderId, current, onEntregaChange }: EntregaDropdownProps) {
+  const [open, setOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  async function handleSelect(entrega: EntregaOption) {
+    if (entrega === current) { setOpen(false); return; }
+    setSaving(true);
+    setOpen(false);
+    try {
+      await onEntregaChange(orderId, entrega);
+    } catch {
+      // rollback feito no hook
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  // Extrai tipo e loja para exibição
+  const isEnt = current.startsWith("Entrega");
+  const lojaNum = current.includes("248") ? "248" : current.includes("26") ? "26" : "";
+  const lojaClass = lojaNum === "248" ? "text-brand-brown" : "text-brand-yellow";
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        disabled={saving}
+        className={`text-sm font-semibold text-gray-800 text-right hover:opacity-70 transition-opacity cursor-pointer
+          ${saving ? "opacity-50 cursor-wait" : ""}`}
+      >
+        {isEnt ? "Entrega" : "Retirada"}
+        {lojaNum && <span className={`font-normal ml-1 ${lojaClass}`}>{lojaNum}</span>}
+      </button>
+
+      {open && (
+        <div className="absolute right-0 mt-1 z-50 bg-white border border-gray-200 rounded-lg shadow-lg py-1 min-w-36">
+          {ENTREGA_OPTIONS.map((opt) => {
+            const optLoja = opt.includes("248") ? "248" : "26";
+            const optLojaClass = optLoja === "248" ? "text-brand-brown font-bold" : "text-brand-yellow font-bold";
+            return (
+              <button
+                key={opt}
+                onClick={() => handleSelect(opt)}
+                className={`w-full text-left text-xs px-3 py-1.5 hover:bg-gray-50 transition-colors
+                  ${opt === current ? "font-semibold bg-gray-50" : "font-normal"}`}
+              >
+                {opt.startsWith("Entrega") ? "Entrega" : "Retirada"}{" "}
+                <span className={optLojaClass}>{optLoja}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Categoria (derivada do ícone do Notion) ──────────────────────────────────
 
 interface CategoryDef { label: string; className: string }
@@ -156,18 +240,11 @@ function categorizeProducts(products: ProductItem[]): {
 interface OrderCardProps {
   order: ParsedOrder;
   onStatusChange: (orderId: string, status: OrderStatus) => Promise<void>;
+  onEntregaChange: (orderId: string, entrega: string) => Promise<void>;
 }
 
-export function OrderCard({ order, onStatusChange }: OrderCardProps) {
+export function OrderCard({ order, onStatusChange, onEntregaChange }: OrderCardProps) {
   const category = CATEGORY_MAP[order.icon] ?? null;
-
-  const isEntrega = order.entrega.startsWith("Entrega");
-  const loja = order.entrega.includes("248") ? "248" : order.entrega.includes("26") ? "26" : "";
-  const lojaClass = loja === "248"
-    ? "text-brand-brown font-bold"
-    : loja === "26"
-      ? "text-brand-yellow font-bold"
-      : "";
 
   const { pdm, bolos, outros, pdmTotal } = categorizeProducts(order.products);
   const groups = [
@@ -200,11 +277,12 @@ export function OrderCard({ order, onStatusChange }: OrderCardProps) {
         </div>
 
         {/* Entrega/Retirada | Loja + Status */}
-        <div className="shrink-0 text-right pt-0.5">
-          <p className="text-sm font-semibold text-gray-800">
-            {isEntrega ? "Entrega" : "Retirada"}
-            {loja && <span className={`font-normal ml-1 ${lojaClass}`}>{loja}</span>}
-          </p>
+        <div className="shrink-0 text-right pt-0.5 flex flex-col items-end gap-1">
+          <EntregaDropdown
+            orderId={order.id}
+            current={order.entrega}
+            onEntregaChange={onEntregaChange}
+          />
           <StatusDropdown
             orderId={order.id}
             current={order.status}
