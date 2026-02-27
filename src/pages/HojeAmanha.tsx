@@ -4,15 +4,14 @@ import { FilterBar } from "@/components/orders/FilterBar";
 import { DaySection } from "@/components/orders/DaySection";
 import { NewOrderModal } from "@/components/orders/NewOrderModal";
 import { ChatOrderModal } from "@/components/orders/ChatOrderModal";
-import { formatBrDate } from "@/utils/notion";
+import { formatBrDateWithDay } from "@/utils/notion";
 import { RefreshCw, Plus, MessageSquare } from "lucide-react";
+
+const DAY_LABELS = ["HOJE", "AMANHÃ", "DEPOIS DE AMANHÃ"];
 
 export default function HojeAmanha() {
   const {
-    todayOrders,
-    tomorrowOrders,
-    today,
-    tomorrow,
+    groupedByDate,
     loading,
     error,
     lastFetched,
@@ -27,16 +26,18 @@ export default function HojeAmanha() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
 
+  const viewLabel = filters.dateField === "producao" ? "produção" : "entrega";
+
   return (
     <div className="space-y-6">
       {/* Page header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-brand-brown">
-            Hoje e Amanhã
+            Hoje e Próximos Dias
           </h1>
           <p className="text-sm text-gray-500 mt-0.5">
-            Pedidos por data de produção
+            Pedidos por data de {viewLabel}
           </p>
         </div>
 
@@ -108,22 +109,17 @@ export default function HojeAmanha() {
       {/* Day sections */}
       {!loading && !error && (
         <div className="space-y-8">
-          <DaySection
-            title={`HOJE${today ? ` (${formatBrDate(today)})` : ""}`}
-            orders={todayOrders}
-            emptyMessage="Nenhum pedido para hoje com este filtro."
-            onStatusChange={updateOrderStatus}
-            onEntregaChange={updateOrderEntrega}
-            onDateChange={updateOrderDate}
-          />
-          <DaySection
-            title={`AMANHÃ${tomorrow ? ` (${formatBrDate(tomorrow)})` : ""}`}
-            orders={tomorrowOrders}
-            emptyMessage="Nenhum pedido para amanhã com este filtro."
-            onStatusChange={updateOrderStatus}
-            onEntregaChange={updateOrderEntrega}
-            onDateChange={updateOrderDate}
-          />
+          {groupedByDate.map((group, i) => (
+            <DaySection
+              key={group.date}
+              title={`${DAY_LABELS[i] ?? group.date} (${formatBrDateWithDay(group.date)})`}
+              orders={group.orders}
+              emptyMessage={`Nenhum pedido para ${(DAY_LABELS[i] ?? group.date).toLowerCase()} com este filtro.`}
+              onStatusChange={updateOrderStatus}
+              onEntregaChange={updateOrderEntrega}
+              onDateChange={updateOrderDate}
+            />
+          ))}
         </div>
       )}
 

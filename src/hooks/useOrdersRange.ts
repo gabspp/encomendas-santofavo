@@ -3,31 +3,37 @@ import type { ParsedOrder, FilterState, OrderStatus } from "@/types";
 
 const REFRESH_MS = 2 * 60 * 1000; // 2 minutes
 
-const DEFAULT_FILTERS: FilterState = {
-  loja: "todas",
-  saida: "todos",
-  categoria: "todas",
-  dateField: "producao",
-};
+interface Config {
+  startDate: string;
+  endDate: string;
+  defaultDateField?: "producao" | "entrega";
+}
 
-export function useOrders() {
+export function useOrdersRange(config: Config) {
   const [rawOrders, setRawOrders] = useState<ParsedOrder[]>([]);
-  const [dates, setDates] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastFetched, setLastFetched] = useState<Date | null>(null);
-  const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
+  const [filters, setFilters] = useState<FilterState>({
+    loja: "todas",
+    saida: "todos",
+    categoria: "todas",
+    dateField: config.defaultDateField ?? "producao",
+  });
+
+  const { startDate, endDate } = config;
 
   const fetchOrders = useCallback(async () => {
     try {
       setError(null);
-      const res = await fetch(`/api/orders?field=${filters.dateField}`);
+      const params = new URLSearchParams({
+        startDate,
+        endDate,
+        field: filters.dateField,
+      });
+      const res = await fetch(`/api/orders-range?${params}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = (await res.json()) as {
-        dates: string[];
-        orders: ParsedOrder[];
-      };
-      setDates(data.dates);
+      const data = (await res.json()) as { orders: ParsedOrder[] };
       setRawOrders(data.orders);
       setLastFetched(new Date());
     } catch (err) {
@@ -37,25 +43,22 @@ export function useOrders() {
     } finally {
       setLoading(false);
     }
-  }, [filters.dateField]);
+  }, [startDate, endDate, filters.dateField]);
 
-  // Re-fetch when dateField changes (other filters are client-side only)
   useEffect(() => {
     setLoading(true);
     void fetchOrders();
   }, [fetchOrders]);
 
-  // Auto-refresh every 2 minutes — silent (no loading spinner on refresh)
   useEffect(() => {
     const id = setInterval(() => void fetchOrders(), REFRESH_MS);
     return () => clearInterval(id);
   }, [fetchOrders]);
 
-  // Client-side filtering — no re-fetch needed
+  // Client-side filtering
   const filteredOrders = rawOrders.filter((order) => {
     const lojaMatch =
-      filters.loja === "todas" ||
-      order.entrega.includes(filters.loja);
+      filters.loja === "todas" || order.entrega.includes(filters.loja);
 
     const saidaMatch =
       filters.saida === "todos" ||
@@ -64,24 +67,27 @@ export function useOrders() {
 
     const categoriaMatch =
       filters.categoria === "todas" ||
-      (filters.categoria === "pdm"     && !order.revenda && order.icon !== "🎂") ||
-      (filters.categoria === "bolo"    && order.icon === "🎂") ||
+      (filters.categoria === "pdm" && !order.revenda && order.icon !== "🎂") ||
+      (filters.categoria === "bolo" && order.icon === "🎂") ||
       (filters.categoria === "revenda" && order.revenda);
 
     return lojaMatch && saidaMatch && categoriaMatch;
   });
 
-  // Group filtered orders by the selected date field
-  const groupedByDate = dates.map((date) => ({
-    date,
-    orders: filteredOrders.filter((o) =>
-      filters.dateField === "producao"
-        ? o.dataProducao === date
-        : o.dataEntrega === date
-    ),
-  }));
+  // Collect unique dates (from the selected date field) and group orders
+  const dateMap = new Map<string, ParsedOrder[]>();
+  for (const order of filteredOrders) {
+    const date =
+      filters.dateField === "producao" ? order.dataProducao : order.dataEntrega;
+    if (!date) continue;
+    if (!dateMap.has(date)) dateMap.set(date, []);
+    dateMap.get(date)!.push(order);
+  }
+  const groupedByDate = Array.from(dateMap.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([date, orders]) => ({ date, orders }));
 
-  // Optimistic entrega update — reverts on error
+  // Optimistic mutations
   const updateOrderEntrega = useCallback(
     async (orderId: string, newEntrega: string) => {
       const prev = rawOrders;
@@ -103,7 +109,6 @@ export function useOrders() {
     [rawOrders]
   );
 
-  // Optimistic status update — reverts on error
   const updateOrderStatus = useCallback(
     async (orderId: string, newStatus: OrderStatus) => {
       const prev = rawOrders;
@@ -125,7 +130,6 @@ export function useOrders() {
     [rawOrders]
   );
 
-  // Optimistic date update — reverts on error
   const updateOrderDate = useCallback(
     async (orderId: string, field: "producao" | "entrega", newDate: string) => {
       const prev = rawOrders;
@@ -153,7 +157,6 @@ export function useOrders() {
     [rawOrders]
   );
 
-  // Optimistic revenda toggle — reverts on error
   const updateOrderRevenda = useCallback(
     async (orderId: string, newRevenda: boolean) => {
       const prev = rawOrders;
@@ -176,8 +179,9 @@ export function useOrders() {
   );
 
   return {
+    rawOrders,
+    filteredOrders,
     groupedByDate,
-    dates,
     loading,
     error,
     lastFetched,

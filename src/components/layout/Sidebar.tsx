@@ -9,27 +9,12 @@ import {
 } from "lucide-react";
 
 const navItems = [
-  { name: "Hoje e Amanhã", href: "/", icon: CalendarDays, disabled: false },
-  {
-    name: "Calendário",
-    href: "/calendario",
-    icon: Calendar,
-    disabled: true,
-  },
-  {
-    name: "Por Data de Produção",
-    href: "/producao",
-    icon: ClipboardList,
-    disabled: true,
-  },
-  {
-    name: "Por Data de Entrega",
-    href: "/entrega",
-    icon: Truck,
-    disabled: true,
-  },
-  { name: "Só Bolos", href: "/bolos", icon: Cake, disabled: true },
-  { name: "Só Pães de Mel", href: "/pdm", icon: Coffee, disabled: true },
+  { name: "Hoje e Próximos Dias", href: "/", icon: CalendarDays },
+  { name: "Calendário",           href: "/calendario", icon: Calendar },
+  { name: "Por Data de Produção", href: "/producao",   icon: ClipboardList },
+  { name: "Por Data de Entrega",  href: "/entrega",    icon: Truck },
+  { name: "Só Bolos",             href: "/bolos",      icon: Cake },
+  { name: "Só Pães de Mel",       href: "/pdm",        icon: Coffee },
 ];
 
 export function Sidebar() {
@@ -50,19 +35,6 @@ export function Sidebar() {
         {navItems.map((item) => {
           const isActive = location.pathname === item.href;
           const Icon = item.icon;
-
-          if (item.disabled) {
-            return (
-              <div
-                key={item.href}
-                title="Em breve"
-                className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-white/30 cursor-not-allowed select-none"
-              >
-                <Icon className="h-4 w-4 shrink-0" />
-                <span>{item.name}</span>
-              </div>
-            );
-          }
 
           return (
             <Link

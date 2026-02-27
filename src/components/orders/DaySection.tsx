@@ -13,14 +13,16 @@ interface DaySectionProps {
 export function DaySection({ title, orders, emptyMessage, onStatusChange, onEntregaChange, onDateChange }: DaySectionProps) {
   return (
     <section className="space-y-3">
-      <div className="flex items-center gap-3">
-        <h2 className="text-sm font-bold uppercase tracking-wider text-gray-500">
-          {title}
-        </h2>
-        <span className="bg-brand-yellow text-brand-brown text-xs font-bold px-2.5 py-0.5 rounded-full">
-          {orders.length}
-        </span>
-      </div>
+      {title && (
+        <div className="flex items-center gap-3">
+          <h2 className="text-sm font-bold uppercase tracking-wider text-gray-500">
+            {title}
+          </h2>
+          <span className="bg-brand-yellow text-brand-brown text-xs font-bold px-2.5 py-0.5 rounded-full">
+            {orders.length}
+          </span>
+        </div>
+      )}
 
       {orders.length === 0 ? (
         <p className="text-sm text-gray-400 py-6 text-center">

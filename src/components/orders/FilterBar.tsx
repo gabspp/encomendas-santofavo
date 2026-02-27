@@ -3,6 +3,7 @@ import type { FilterState } from "@/types";
 interface FilterBarProps {
   filters: FilterState;
   onChange: (filters: FilterState) => void;
+  showCategoria?: boolean;
 }
 
 interface Option<T extends string> {
@@ -15,11 +16,13 @@ function PillGroup<T extends string>({
   options,
   value,
   onChange,
+  accent,
 }: {
   label: string;
   options: Option<T>[];
   value: T;
   onChange: (v: T) => void;
+  accent?: boolean;
 }) {
   return (
     <div className="flex items-center gap-2">
@@ -33,7 +36,9 @@ function PillGroup<T extends string>({
             onClick={() => onChange(opt.value)}
             className={`px-3 py-1 rounded-full text-xs font-medium transition-colors cursor-pointer ${
               value === opt.value
-                ? "bg-brand-brown text-white"
+                ? accent
+                  ? "bg-brand-yellow text-brand-brown"
+                  : "bg-brand-brown text-white"
                 : "bg-white text-gray-600 border border-gray-200 hover:border-gray-300 hover:text-gray-800"
             }`}
           >
@@ -45,9 +50,22 @@ function PillGroup<T extends string>({
   );
 }
 
-export function FilterBar({ filters, onChange }: FilterBarProps) {
+export function FilterBar({ filters, onChange, showCategoria = true }: FilterBarProps) {
   return (
     <div className="flex flex-wrap gap-4 items-center py-3 border-b border-gray-200">
+      <PillGroup<FilterState["dateField"]>
+        label="Ver por"
+        options={[
+          { value: "producao", label: "Produção" },
+          { value: "entrega",  label: "Entrega" },
+        ]}
+        value={filters.dateField}
+        onChange={(v) => onChange({ ...filters, dateField: v })}
+        accent
+      />
+
+      <div className="w-px h-5 bg-gray-200 shrink-0" />
+
       <PillGroup<FilterState["loja"]>
         label="Loja"
         options={[
@@ -58,17 +76,21 @@ export function FilterBar({ filters, onChange }: FilterBarProps) {
         value={filters.loja}
         onChange={(v) => onChange({ ...filters, loja: v })}
       />
-      <PillGroup<FilterState["categoria"]>
-        label="Categoria"
-        options={[
-          { value: "todas",   label: "Todas" },
-          { value: "pdm",     label: "PDM" },
-          { value: "bolo",    label: "Bolo" },
-          { value: "revenda", label: "Revenda" },
-        ]}
-        value={filters.categoria}
-        onChange={(v) => onChange({ ...filters, categoria: v })}
-      />
+
+      {showCategoria && (
+        <PillGroup<FilterState["categoria"]>
+          label="Categoria"
+          options={[
+            { value: "todas",   label: "Todas" },
+            { value: "pdm",     label: "PDM" },
+            { value: "bolo",    label: "Bolo" },
+            { value: "revenda", label: "Revenda" },
+          ]}
+          value={filters.categoria}
+          onChange={(v) => onChange({ ...filters, categoria: v })}
+        />
+      )}
+
       <PillGroup<FilterState["saida"]>
         label="Saída"
         options={[

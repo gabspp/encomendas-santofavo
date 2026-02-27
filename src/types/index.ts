@@ -44,4 +44,5 @@ export interface FilterState {
   loja: "todas" | "26" | "248";
   saida: "todos" | "entrega" | "retirada";
   categoria: "todas" | "pdm" | "bolo" | "revenda";
+  dateField: "producao" | "entrega";
 }
