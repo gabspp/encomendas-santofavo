@@ -183,6 +183,7 @@ interface DatePickerCardProps {
 
 function DatePickerCard({ onSelect, disabled }: DatePickerCardProps) {
   const quickDates = useMemo(() => getQuickDates(), []);
+  const dateInputRef = useRef<HTMLInputElement>(null);
 
   function handleNativePick(e: React.ChangeEvent<HTMLInputElement>) {
     const iso = e.target.value;
@@ -190,6 +191,16 @@ function DatePickerCard({ onSelect, disabled }: DatePickerCardProps) {
     const [y, m, d] = iso.split("-");
     e.target.value = "";
     onSelect(iso, `${d}/${m}/${y}`);
+  }
+
+  function openPicker() {
+    const input = dateInputRef.current;
+    if (!input || disabled) return;
+    try {
+      (input as HTMLInputElement & { showPicker?: () => void }).showPicker?.();
+    } catch {
+      input.click();
+    }
   }
 
   const pillCls =
@@ -211,16 +222,17 @@ function DatePickerCard({ onSelect, disabled }: DatePickerCardProps) {
               <span className="text-gray-400">{qd.shortDate}</span>
             </button>
           ))}
-          <label className={`${pillCls}`}>
+          <button onClick={openPicker} disabled={disabled} className={pillCls}>
             <CalendarDays className="h-3.5 w-3.5" />
             <span>Outra data</span>
-            <input
-              type="date"
-              className="sr-only"
-              onChange={handleNativePick}
-              disabled={disabled}
-            />
-          </label>
+          </button>
+          <input
+            ref={dateInputRef}
+            type="date"
+            className="sr-only"
+            onChange={handleNativePick}
+            tabIndex={-1}
+          />
         </div>
       </div>
     </div>
