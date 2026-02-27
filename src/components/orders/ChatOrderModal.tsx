@@ -161,8 +161,9 @@ function QuickReplySection({
   const userHasSentMessage = messages.some((m) => m.role === "user");
   const showAtendente = !userHasSentMessage && !draft.atendente;
 
-  // Entrega chips: only after atendente is known AND entrega is not set yet
-  const showEntrega = !!draft.atendente && !draft.entrega;
+  // Entrega chips: show once user has interacted and entrega is not set yet
+  // (independent of atendente — the user may have skipped the atendente chips)
+  const showEntrega = userHasSentMessage && !draft.entrega;
 
   if (!showAtendente && !showEntrega) return null;
 
