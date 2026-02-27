@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
-import { X, Send, Loader2, CalendarDays } from "lucide-react";
+import { X, Send, Loader2, CalendarDays, RotateCcw } from "lucide-react";
 import { formatBrDateWithDay } from "@/utils/notion";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -32,7 +32,6 @@ interface ChatOrderModalProps {
 // ── Domain constants (mirrors backend) ────────────────────────────────────────
 
 const ATENDENTES = ["Raissa", "Gabriel", "Maria", "Thamiris", "Karla", "Elen", "Carol"];
-const ENTREGA_OPTIONS = ["Entrega 26", "Retirada 26", "Entrega 248", "Retirada 248"];
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -52,17 +51,6 @@ function calcProducao(entregaISO: string): string {
 
 function isReady(draft: DraftState): boolean {
   return !!(draft.atendente && draft.cliente && draft.dataEntrega && draft.entrega);
-}
-
-// Compute context-aware quick reply chips based on what's still missing
-function computeQuickReplies(draft: DraftState): { label: string; value: string }[] {
-  if (!draft.atendente) {
-    return ATENDENTES.map((name) => ({ label: name, value: name }));
-  }
-  if (!draft.entrega) {
-    return ENTREGA_OPTIONS.map((opt) => ({ label: opt, value: opt }));
-  }
-  return [];
 }
 
 // ── Preview Card ──────────────────────────────────────────────────────────────
@@ -144,6 +132,125 @@ function DraftPreview({ draft }: { draft: DraftState }) {
   );
 }
 
+// ── Quick Reply Section ────────────────────────────────────────────────────────
+
+interface QuickReplySectionProps {
+  messages: ChatMessage[];
+  draft: DraftState;
+  loading: boolean;
+  submitting: boolean;
+  selectedTipo: "Entrega" | "Retirada" | null;
+  onSelectTipo: (tipo: "Entrega" | "Retirada") => void;
+  onResetTipo: () => void;
+  onSend: (value: string) => void;
+}
+
+function QuickReplySection({
+  messages,
+  draft,
+  loading,
+  submitting,
+  selectedTipo,
+  onSelectTipo,
+  onResetTipo,
+  onSend,
+}: QuickReplySectionProps) {
+  const disabled = loading || submitting;
+
+  // Atendente chips: only before user sends any message AND no atendente set
+  const userHasSentMessage = messages.some((m) => m.role === "user");
+  const showAtendente = !userHasSentMessage && !draft.atendente;
+
+  // Entrega chips: only after atendente is known AND entrega is not set yet
+  const showEntrega = !!draft.atendente && !draft.entrega;
+
+  if (!showAtendente && !showEntrega) return null;
+
+  const pillBase =
+    "px-3 py-1.5 text-xs font-medium rounded-full transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed";
+  const pillDefault =
+    "bg-brand-cream border border-brand-brown/30 text-brand-brown hover:bg-brand-yellow/40";
+  const pillSelected =
+    "bg-brand-brown text-white border border-brand-brown";
+
+  return (
+    <div className="px-4 pt-2 pb-1 shrink-0 border-t border-gray-50 space-y-2">
+      {showAtendente && (
+        <div className="flex flex-wrap gap-1.5">
+          {ATENDENTES.map((name) => (
+            <button
+              key={name}
+              onClick={() => onSend(name)}
+              disabled={disabled}
+              className={`${pillBase} ${pillDefault}`}
+            >
+              {name}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {showEntrega && !selectedTipo && (
+        <div className="space-y-1">
+          <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
+            Tipo de saída
+          </p>
+          <div className="flex gap-1.5">
+            <button
+              onClick={() => onSelectTipo("Entrega")}
+              disabled={disabled}
+              className={`${pillBase} ${pillDefault}`}
+            >
+              🚚 Entrega
+            </button>
+            <button
+              onClick={() => onSelectTipo("Retirada")}
+              disabled={disabled}
+              className={`${pillBase} ${pillDefault}`}
+            >
+              🏪 Retirada
+            </button>
+          </div>
+        </div>
+      )}
+
+      {showEntrega && selectedTipo && (
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={onResetTipo}
+              disabled={disabled}
+              className="flex items-center gap-1 text-[10px] font-semibold text-brand-brown/70 hover:text-brand-brown transition-colors cursor-pointer"
+            >
+              <RotateCcw className="h-3 w-3" />
+              {selectedTipo}
+            </button>
+            <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
+              → Loja
+            </span>
+          </div>
+          <div className="flex gap-1.5">
+            <button
+              onClick={() => onSend(`${selectedTipo} 26`)}
+              disabled={disabled}
+              className={`${pillBase} ${pillSelected}`}
+            >
+              Loja 26
+            </button>
+            <button
+              onClick={() => onSend(`${selectedTipo} 248`)}
+              disabled={disabled}
+              className={`${pillBase} ${pillSelected}`}
+            >
+              Loja 248
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Main Component ────────────────────────────────────────────────────────────
 
 export function ChatOrderModal({ onClose, onCreated }: ChatOrderModalProps) {
@@ -158,12 +265,20 @@ export function ChatOrderModal({ onClose, onCreated }: ChatOrderModalProps) {
   const [metodoOptions, setMetodoOptions] = useState<string[]>([]);
   const [ready, setReady] = useState(false);
 
+  // Two-step entrega selection (tipo before loja)
+  const [selectedTipo, setSelectedTipo] = useState<"Entrega" | "Retirada" | null>(null);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
-  const dateInputRef = useRef<HTMLInputElement>(null);
 
-  // Context-aware quick reply chips (reactive from draft)
-  const quickReplies = useMemo(() => computeQuickReplies(draft), [draft]);
+  // Clear selectedTipo when entrega gets set from free-form text
+  const prevEntrega = useRef(draft.entrega);
+  useMemo(() => {
+    if (draft.entrega && !prevEntrega.current) {
+      setSelectedTipo(null);
+    }
+    prevEntrega.current = draft.entrega;
+  }, [draft.entrega]);
 
   // Fetch payment method options on mount
   useEffect(() => {
@@ -203,13 +318,12 @@ export function ChatOrderModal({ onClose, onCreated }: ChatOrderModalProps) {
     const userMsg: ChatMessage = { role: "user", content };
     const updatedMessages = [...messages, userMsg];
     setMessages(updatedMessages);
+
     if (!text) {
       setInput("");
-      // Reset textarea height
-      if (inputRef.current) {
-        inputRef.current.style.height = "auto";
-      }
+      if (inputRef.current) inputRef.current.style.height = "auto";
     }
+
     setLoading(true);
 
     try {
@@ -232,7 +346,6 @@ export function ChatOrderModal({ onClose, onCreated }: ChatOrderModalProps) {
         ready: boolean;
       };
 
-      // Apply draft updates
       setDraft((prev) => {
         const merged: DraftState = {
           ...prev,
@@ -242,9 +355,12 @@ export function ChatOrderModal({ onClose, onCreated }: ChatOrderModalProps) {
             ...(data.draftUpdates.products ?? {}),
           },
         };
-        // Auto-calculate production date when we get delivery date
         if (data.draftUpdates.dataEntrega && !data.draftUpdates.dataProducao) {
           merged.dataProducao = calcProducao(data.draftUpdates.dataEntrega);
+        }
+        // If entrega was set via free-form, clear selectedTipo
+        if (data.draftUpdates.entrega) {
+          setSelectedTipo(null);
         }
         setReady(isReady(merged));
         return merged;
@@ -271,13 +387,13 @@ export function ChatOrderModal({ onClose, onCreated }: ChatOrderModalProps) {
     }
   }
 
-  // Date picker: convert YYYY-MM-DD to human-readable and send as message
+  // Date picker → send as chat message
   function handleDatePick(e: React.ChangeEvent<HTMLInputElement>) {
-    const iso = e.target.value; // YYYY-MM-DD
+    const iso = e.target.value;
     if (!iso) return;
     const [y, m, d] = iso.split("-");
     const formatted = `${d}/${m}/${y}`;
-    e.target.value = ""; // reset for next pick
+    e.target.value = "";
     void sendMessage(`Data de entrega: ${formatted}`);
   }
 
@@ -399,20 +515,17 @@ export function ChatOrderModal({ onClose, onCreated }: ChatOrderModalProps) {
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Quick reply chips */}
-        {!loading && !submitting && quickReplies.length > 0 && (
-          <div className="px-4 pt-2 pb-1 flex flex-wrap gap-1.5 shrink-0 border-t border-gray-50">
-            {quickReplies.map((qr) => (
-              <button
-                key={qr.value}
-                onClick={() => void sendMessage(qr.value)}
-                className="px-3 py-1 bg-brand-cream border border-brand-brown/30 text-brand-brown text-xs font-medium rounded-full hover:bg-brand-yellow/40 transition-colors cursor-pointer"
-              >
-                {qr.label}
-              </button>
-            ))}
-          </div>
-        )}
+        {/* Contextual quick reply chips */}
+        <QuickReplySection
+          messages={messages}
+          draft={draft}
+          loading={loading}
+          submitting={submitting}
+          selectedTipo={selectedTipo}
+          onSelectTipo={setSelectedTipo}
+          onResetTipo={() => setSelectedTipo(null)}
+          onSend={(value) => void sendMessage(value)}
+        />
 
         {/* Input */}
         <div className="border-t border-gray-100 px-4 py-3 shrink-0">
@@ -424,7 +537,6 @@ export function ChatOrderModal({ onClose, onCreated }: ChatOrderModalProps) {
             >
               <CalendarDays className="h-4 w-4" />
               <input
-                ref={dateInputRef}
                 type="date"
                 className="sr-only"
                 onChange={handleDatePick}
