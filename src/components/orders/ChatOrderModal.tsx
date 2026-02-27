@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from "react";
-import { X, Send, Loader2 } from "lucide-react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { X, Send, Loader2, CalendarDays } from "lucide-react";
 import { formatBrDateWithDay } from "@/utils/notion";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -29,9 +29,14 @@ interface ChatOrderModalProps {
   onCreated: () => void;
 }
 
+// ── Domain constants (mirrors backend) ────────────────────────────────────────
+
+const ATENDENTES = ["Raissa", "Gabriel", "Maria", "Thamiris", "Karla", "Elen", "Carol"];
+const ENTREGA_OPTIONS = ["Entrega 26", "Retirada 26", "Entrega 248", "Retirada 248"];
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-const INITIAL_BOT_MESSAGE = "Olá! Cole o pedido ou me diga o que precisa.";
+const INITIAL_BOT_MESSAGE = "Olá! Quem está atendendo?";
 
 function calcProducao(entregaISO: string): string {
   const [y, m, d] = entregaISO.split("-").map(Number);
@@ -47,6 +52,17 @@ function calcProducao(entregaISO: string): string {
 
 function isReady(draft: DraftState): boolean {
   return !!(draft.atendente && draft.cliente && draft.dataEntrega && draft.entrega);
+}
+
+// Compute context-aware quick reply chips based on what's still missing
+function computeQuickReplies(draft: DraftState): { label: string; value: string }[] {
+  if (!draft.atendente) {
+    return ATENDENTES.map((name) => ({ label: name, value: name }));
+  }
+  if (!draft.entrega) {
+    return ENTREGA_OPTIONS.map((opt) => ({ label: opt, value: opt }));
+  }
+  return [];
 }
 
 // ── Preview Card ──────────────────────────────────────────────────────────────
@@ -144,6 +160,10 @@ export function ChatOrderModal({ onClose, onCreated }: ChatOrderModalProps) {
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const dateInputRef = useRef<HTMLInputElement>(null);
+
+  // Context-aware quick reply chips (reactive from draft)
+  const quickReplies = useMemo(() => computeQuickReplies(draft), [draft]);
 
   // Fetch payment method options on mount
   useEffect(() => {
@@ -165,18 +185,34 @@ export function ChatOrderModal({ onClose, onCreated }: ChatOrderModalProps) {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
 
-  async function sendMessage() {
-    const text = input.trim();
-    if (!text || loading) return;
+  // Resize textarea to fit content
+  function autoResizeTextarea(ta: HTMLTextAreaElement) {
+    ta.style.height = "auto";
+    ta.style.height = `${Math.min(ta.scrollHeight, 128)}px`;
+  }
 
-    const userMsg: ChatMessage = { role: "user", content: text };
+  function handleInputChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
+    setInput(e.target.value);
+    autoResizeTextarea(e.target);
+  }
+
+  const sendMessage = useCallback(async (text?: string) => {
+    const content = (text ?? input).trim();
+    if (!content || loading) return;
+
+    const userMsg: ChatMessage = { role: "user", content };
     const updatedMessages = [...messages, userMsg];
     setMessages(updatedMessages);
-    setInput("");
+    if (!text) {
+      setInput("");
+      // Reset textarea height
+      if (inputRef.current) {
+        inputRef.current.style.height = "auto";
+      }
+    }
     setLoading(true);
 
     try {
-      // Convert UI messages to Anthropic format (skip initial bot greeting from API call if it's the first)
       const apiMessages = updatedMessages.map((m) => ({
         role: m.role === "bot" ? "assistant" : "user",
         content: m.content,
@@ -226,6 +262,23 @@ export function ChatOrderModal({ onClose, onCreated }: ChatOrderModalProps) {
       setLoading(false);
       setTimeout(() => inputRef.current?.focus(), 50);
     }
+  }, [input, loading, messages, draft, metodoOptions]);
+
+  function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      void sendMessage();
+    }
+  }
+
+  // Date picker: convert YYYY-MM-DD to human-readable and send as message
+  function handleDatePick(e: React.ChangeEvent<HTMLInputElement>) {
+    const iso = e.target.value; // YYYY-MM-DD
+    if (!iso) return;
+    const [y, m, d] = iso.split("-");
+    const formatted = `${d}/${m}/${y}`;
+    e.target.value = ""; // reset for next pick
+    void sendMessage(`Data de entrega: ${formatted}`);
   }
 
   async function handleSubmit() {
@@ -268,22 +321,16 @@ export function ChatOrderModal({ onClose, onCreated }: ChatOrderModalProps) {
     }
   }
 
-  function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      void sendMessage();
-    }
-  }
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop */}
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
 
       {/* Modal */}
-      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg flex flex-col overflow-hidden"
-        style={{ height: "min(90vh, 680px)" }}>
-
+      <div
+        className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg flex flex-col overflow-hidden"
+        style={{ height: "min(90vh, 680px)" }}
+      >
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
           <div>
@@ -352,20 +399,51 @@ export function ChatOrderModal({ onClose, onCreated }: ChatOrderModalProps) {
           <div ref={messagesEndRef} />
         </div>
 
+        {/* Quick reply chips */}
+        {!loading && !submitting && quickReplies.length > 0 && (
+          <div className="px-4 pt-2 pb-1 flex flex-wrap gap-1.5 shrink-0 border-t border-gray-50">
+            {quickReplies.map((qr) => (
+              <button
+                key={qr.value}
+                onClick={() => void sendMessage(qr.value)}
+                className="px-3 py-1 bg-brand-cream border border-brand-brown/30 text-brand-brown text-xs font-medium rounded-full hover:bg-brand-yellow/40 transition-colors cursor-pointer"
+              >
+                {qr.label}
+              </button>
+            ))}
+          </div>
+        )}
+
         {/* Input */}
         <div className="border-t border-gray-100 px-4 py-3 shrink-0">
           <div className="flex gap-2 items-end">
+            {/* Date picker button */}
+            <label
+              className="shrink-0 p-2 text-gray-400 hover:text-brand-brown transition-colors cursor-pointer"
+              title="Escolher data de entrega"
+            >
+              <CalendarDays className="h-4 w-4" />
+              <input
+                ref={dateInputRef}
+                type="date"
+                className="sr-only"
+                onChange={handleDatePick}
+                disabled={loading || submitting}
+              />
+            </label>
+
             <textarea
               ref={inputRef}
               value={input}
-              onChange={(e) => setInput(e.target.value)}
+              onChange={handleInputChange}
               onKeyDown={handleKeyDown}
               placeholder="Digite ou cole o pedido aqui…"
               rows={1}
               disabled={loading || submitting}
-              className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-brand-brown transition-colors resize-none leading-relaxed disabled:opacity-50 max-h-32 overflow-y-auto"
-              style={{ fieldSizing: "content" } as React.CSSProperties}
+              className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-brand-brown transition-colors resize-none leading-relaxed disabled:opacity-50 overflow-y-auto"
+              style={{ maxHeight: "128px" }}
             />
+
             <button
               onClick={() => void sendMessage()}
               disabled={!input.trim() || loading || submitting}
@@ -374,7 +452,9 @@ export function ChatOrderModal({ onClose, onCreated }: ChatOrderModalProps) {
               <Send className="h-4 w-4" />
             </button>
           </div>
-          <p className="text-xs text-gray-400 mt-1.5 text-center">Enter para enviar · Shift+Enter para nova linha</p>
+          <p className="text-xs text-gray-400 mt-1.5 text-center">
+            Enter para enviar · Shift+Enter para nova linha
+          </p>
         </div>
       </div>
     </div>

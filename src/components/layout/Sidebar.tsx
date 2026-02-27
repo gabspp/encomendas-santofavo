@@ -6,15 +6,17 @@ import {
   Truck,
   Cake,
   Coffee,
+  Egg,
 } from "lucide-react";
 
 const navItems = [
-  { name: "Hoje e Próximos Dias", href: "/", icon: CalendarDays },
+  { name: "Hoje e Próximos Dias", href: "/",          icon: CalendarDays },
   { name: "Calendário",           href: "/calendario", icon: Calendar },
   { name: "Por Data de Produção", href: "/producao",   icon: ClipboardList },
   { name: "Por Data de Entrega",  href: "/entrega",    icon: Truck },
   { name: "Só Bolos",             href: "/bolos",      icon: Cake },
   { name: "Só Pães de Mel",       href: "/pdm",        icon: Coffee },
+  { name: "Páscoa",               href: "/pascoa",     icon: Egg },
 ];
 
 export function Sidebar() {

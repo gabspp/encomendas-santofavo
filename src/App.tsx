@@ -6,6 +6,7 @@ import PorProducao from "@/pages/PorProducao";
 import PorEntrega from "@/pages/PorEntrega";
 import SoBolos from "@/pages/SoBolos";
 import SoPdm from "@/pages/SoPdm";
+import SoPascoa from "@/pages/SoPascoa";
 
 export default function App() {
   return (
@@ -20,6 +21,7 @@ export default function App() {
             <Route path="/entrega" element={<PorEntrega />} />
             <Route path="/bolos" element={<SoBolos />} />
             <Route path="/pdm" element={<SoPdm />} />
+            <Route path="/pascoa" element={<SoPascoa />} />
             <Route path="*" element={<HojeAmanha />} />
           </Routes>
         </div>
