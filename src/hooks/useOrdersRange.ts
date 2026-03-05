@@ -65,10 +65,12 @@ export function useOrdersRange(config: Config) {
       (filters.saida === "entrega" && order.entrega.startsWith("Entrega")) ||
       (filters.saida === "retirada" && order.entrega.startsWith("Retirada"));
 
+    const hasPdm  = order.products.some((p) => p.name.includes("PDM") || p.name.includes("Pão de Mel"));
+    const hasBolo = order.products.some((p) => p.name.startsWith("Bolo"));
     const categoriaMatch =
       filters.categoria === "todas" ||
-      (filters.categoria === "pdm" && !order.revenda && order.icon !== "🎂") ||
-      (filters.categoria === "bolo" && order.icon === "🎂") ||
+      (filters.categoria === "pdm"     && hasPdm) ||
+      (filters.categoria === "bolo"    && hasBolo) ||
       (filters.categoria === "revenda" && order.revenda);
 
     return lojaMatch && saidaMatch && categoriaMatch;
