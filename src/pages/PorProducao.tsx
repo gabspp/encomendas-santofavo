@@ -45,7 +45,7 @@ export default function PorProducao() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-brand-brown">
+          <h1 className="text-xl md:text-2xl font-bold text-brand-brown">
             Por Data de Produção
           </h1>
           <p className="text-sm text-gray-500 mt-0.5">

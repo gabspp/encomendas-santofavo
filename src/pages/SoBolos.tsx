@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { useOrdersRange } from "@/hooks/useOrdersRange";
 import { FilterBar } from "@/components/orders/FilterBar";
 import { DaySection } from "@/components/orders/DaySection";
-import { formatBrDateWithDay } from "@/utils/notion";
+import { formatBrDateWithDay, extractHorario, stripHorario } from "@/utils/notion";
 import type { ParsedOrder } from "@/types";
 import { RefreshCw } from "lucide-react";
 
@@ -68,6 +68,50 @@ function shortBoloName(name: string): string {
     .replace("Bolo de Mel Mini", "Mel Mini");
 }
 
+// ── Tabela de bolos por dia ────────────────────────────────────────────────────
+
+function bolosStr(order: ParsedOrder): string {
+  return order.products
+    .filter((p) => BOLO_PRODUCT_SET.has(p.name))
+    .map((p) => `${shortBoloName(p.name)} ×${p.qty}`)
+    .join(", ");
+}
+
+function BolosTable({ orders }: { orders: ParsedOrder[] }) {
+  return (
+    <div className="overflow-x-auto rounded-xl border border-pink-200">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="bg-pink-50 text-pink-800 text-left">
+            <th className="px-3 py-2 font-semibold whitespace-nowrap">Nome</th>
+            <th className="px-3 py-2 font-semibold whitespace-nowrap">Bolo(s)</th>
+            <th className="px-3 py-2 font-semibold whitespace-nowrap">Horário</th>
+            <th className="px-3 py-2 font-semibold whitespace-nowrap">Tipo</th>
+            <th className="px-3 py-2 font-semibold">Obs</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-pink-100 bg-white">
+          {orders.map((order) => {
+            const horario = extractHorario(order.observacao);
+            const obs = stripHorario(order.observacao);
+            return (
+              <tr key={order.id} className="hover:bg-pink-50/40 transition-colors">
+                <td className="px-3 py-2 font-medium text-gray-800 whitespace-nowrap">{order.cliente}</td>
+                <td className="px-3 py-2 text-gray-700">{bolosStr(order)}</td>
+                <td className="px-3 py-2 text-amber-700 font-medium whitespace-nowrap">
+                  {horario ?? <span className="text-gray-300">—</span>}
+                </td>
+                <td className="px-3 py-2 whitespace-nowrap text-gray-600">{order.entrega}</td>
+                <td className="px-3 py-2 text-orange-700 text-xs max-w-48">{obs || <span className="text-gray-300">—</span>}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 interface BoloDaySectionProps {
   date: string;
   orders: ParsedOrder[];
@@ -109,6 +153,9 @@ function BoloDaySection({ date, orders, onStatusChange, onEntregaChange, onDateC
           ))}
         </div>
       </div>
+
+      {/* Per-order summary table */}
+      <BolosTable orders={orders} />
 
       {/* Individual order cards */}
       <DaySection
@@ -172,7 +219,7 @@ export default function SoBolos() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-brand-brown">Só Bolos</h1>
+          <h1 className="text-xl md:text-2xl font-bold text-brand-brown">Só Bolos</h1>
           <p className="text-sm text-gray-500 mt-0.5">
             Pedidos com bolos por data de {viewLabel} · próximos 60 dias
           </p>

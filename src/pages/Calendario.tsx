@@ -136,7 +136,7 @@ export default function Calendario() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-brand-brown">Calendário</h1>
+          <h1 className="text-xl md:text-2xl font-bold text-brand-brown">Calendário</h1>
           <p className="text-sm text-gray-500 mt-0.5">
             Por data de {viewLabel}
           </p>

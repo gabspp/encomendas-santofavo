@@ -33,7 +33,7 @@ export default function HojeAmanha() {
       {/* Page header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-brand-brown">
+          <h1 className="text-xl md:text-2xl font-bold text-brand-brown">
             Hoje e Próximos Dias
           </h1>
           <p className="text-sm text-gray-500 mt-0.5">

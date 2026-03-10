@@ -23,7 +23,7 @@ export function Sidebar() {
   const location = useLocation();
 
   return (
-    <aside className="w-56 shrink-0 bg-brand-brown text-white flex flex-col h-full">
+    <aside className="w-56 shrink-0 bg-brand-brown text-white hidden md:flex flex-col h-full">
       {/* Brand */}
       <div className="px-4 py-5 border-b border-white/10">
         <h1 className="text-brand-yellow font-bold text-lg leading-tight">

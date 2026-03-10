@@ -218,7 +218,7 @@ export default function SoPascoa() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-brand-brown">🐰 Páscoa</h1>
+          <h1 className="text-xl md:text-2xl font-bold text-brand-brown">🐰 Páscoa</h1>
           <p className="text-sm text-gray-500 mt-0.5">
             Ovos e barras por data de {viewLabel} · próximos 60 dias
           </p>

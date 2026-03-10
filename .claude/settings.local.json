@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git add src/hooks/useOrders.ts src/hooks/useOrdersRange.ts)",
+      "Bash(git commit:*)",
+      "Bash(git push)",
+      "Bash(npx tsc --noEmit)",
+      "Bash(git add -A)"
+    ]
+  }
+}

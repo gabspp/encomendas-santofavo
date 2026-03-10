@@ -1,5 +1,6 @@
 import { Routes, Route } from "react-router-dom";
 import { Sidebar } from "@/components/layout/Sidebar";
+import { BottomNav } from "@/components/layout/BottomNav";
 import HojeAmanha from "@/pages/HojeAmanha";
 import Calendario from "@/pages/Calendario";
 import PorProducao from "@/pages/PorProducao";
@@ -11,9 +12,12 @@ import SoPascoa from "@/pages/SoPascoa";
 export default function App() {
   return (
     <div className="flex h-screen bg-brand-cream overflow-hidden">
+      {/* Sidebar: visible on md+ */}
       <Sidebar />
+
       <main className="flex-1 overflow-y-auto">
-        <div className="max-w-screen-2xl mx-auto p-6">
+        {/* Extra bottom padding on mobile for the bottom nav bar */}
+        <div className="max-w-screen-2xl mx-auto p-4 md:p-6 pb-20 md:pb-6">
           <Routes>
             <Route path="/" element={<HojeAmanha />} />
             <Route path="/calendario" element={<Calendario />} />
@@ -26,6 +30,9 @@ export default function App() {
           </Routes>
         </div>
       </main>
+
+      {/* Bottom nav: visible on mobile only */}
+      <BottomNav />
     </div>
   );
 }

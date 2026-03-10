@@ -4,7 +4,7 @@ import { formatBrDateWithDay } from "@/utils/notion";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type FlowStep = "atendente" | "tipo" | "loja" | "cliente" | "data" | "freeform";
+type FlowStep = "atendente" | "tipo" | "loja" | "cliente" | "data" | "horario" | "freeform";
 
 interface ChatMessage {
   role: "bot" | "user";
@@ -241,6 +241,8 @@ function DatePickerCard({ onSelect, disabled }: DatePickerCardProps) {
 
 // ── Step Chips (shown at bottom of modal) ─────────────────────────────────────
 
+const HORARIO_OPTIONS = ["8h", "9h", "10h", "11h", "12h", "13h", "14h", "15h", "16h", "17h", "18h", "19h"];
+
 interface StepChipsProps {
   step: FlowStep;
   selectedTipo: "Entrega" | "Retirada" | null;
@@ -250,6 +252,7 @@ interface StepChipsProps {
 }
 
 function StepChips({ step, selectedTipo, disabled, onSend, onSelectTipo }: StepChipsProps) {
+  const timeInputRef = useRef<HTMLInputElement>(null);
   const pill =
     "px-3 py-1.5 text-xs font-medium rounded-full transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed bg-brand-cream border border-brand-brown/30 text-brand-brown hover:bg-brand-yellow/40";
 
@@ -289,21 +292,50 @@ function StepChips({ step, selectedTipo, disabled, onSend, onSelectTipo }: StepC
           {selectedTipo} →
         </p>
         <div className="flex gap-1.5">
-          <button
-            onClick={() => onSend(`${selectedTipo} 26`)}
-            disabled={disabled}
-            className={pill}
-          >
+          <button onClick={() => onSend(`${selectedTipo} 26`)} disabled={disabled} className={pill}>
             Loja 26
           </button>
-          <button
-            onClick={() => onSend(`${selectedTipo} 248`)}
-            disabled={disabled}
-            className={pill}
-          >
+          <button onClick={() => onSend(`${selectedTipo} 248`)} disabled={disabled} className={pill}>
             Loja 248
           </button>
         </div>
+      </div>
+    );
+  }
+
+  if (step === "horario") {
+    return (
+      <div className="px-4 pt-2 pb-2 shrink-0 border-t border-gray-100 space-y-1.5">
+        <div className="flex flex-wrap gap-1.5">
+          {HORARIO_OPTIONS.map((h) => (
+            <button key={h} onClick={() => onSend(h)} disabled={disabled} className={pill}>
+              {h}
+            </button>
+          ))}
+          <button
+            onClick={() => { timeInputRef.current?.showPicker?.() ?? timeInputRef.current?.click(); }}
+            disabled={disabled}
+            className={pill}
+          >
+            Outro horário
+          </button>
+          <input
+            ref={timeInputRef}
+            type="time"
+            className="sr-only"
+            tabIndex={-1}
+            onChange={(e) => {
+              if (!e.target.value) return;
+              const [hh, mm] = e.target.value.split(":");
+              const label = mm === "00" ? `${parseInt(hh)}h` : `${parseInt(hh)}h${mm}`;
+              e.target.value = "";
+              onSend(label);
+            }}
+          />
+        </div>
+        <button onClick={() => onSend("Sem horário")} disabled={disabled} className="text-xs text-gray-400 hover:text-gray-600 cursor-pointer">
+          Sem horário específico →
+        </button>
       </div>
     );
   }
@@ -409,9 +441,9 @@ export function ChatOrderModal({ onClose, onCreated }: ChatOrderModalProps) {
     setMessages((prev) => [
       ...prev,
       { role: "user", content: display },
-      { role: "bot", content: "Ótimo! Quais produtos? (Pode colar o pedido completo do WhatsApp)" },
+      { role: "bot", content: "Tem algum horário específico de entrega?" },
     ]);
-    setStep("freeform");
+    setStep("horario");
     setTimeout(() => inputRef.current?.focus(), 50);
   }
 
@@ -539,6 +571,29 @@ export function ChatOrderModal({ onClose, onCreated }: ChatOrderModalProps) {
       return;
     }
 
+    // ── Horario step: time chip or typed time ────────────────────────────────
+    if (step === "horario") {
+      const isSemHorario = content === "Sem horário";
+      const newDraft = isSemHorario
+        ? draft
+        : { ...draft, observacao: `Horário: ${content}${draft.observacao ? "\n" + draft.observacao : ""}` };
+      if (!isSemHorario) {
+        setDraft((prev) => ({
+          ...prev,
+          observacao: `Horário: ${content}${prev.observacao ? "\n" + prev.observacao : ""}`,
+        }));
+      }
+      setMessages((prev) => [
+        ...prev,
+        { role: "user", content },
+        { role: "bot", content: "Ótimo! Quais produtos? (Pode colar o pedido completo do WhatsApp)" },
+      ]);
+      setStep("freeform");
+      setTimeout(() => inputRef.current?.focus(), 50);
+      void newDraft; // suppress unused warning
+      return;
+    }
+
     // ── Freeform: call LLM ───────────────────────────────────────────────────
     const userMsg: ChatMessage = { role: "user", content };
     const updated = [...messages, userMsg];
@@ -594,14 +649,14 @@ export function ChatOrderModal({ onClose, onCreated }: ChatOrderModalProps) {
   }
 
   const chipsDisabled = loading || submitting;
-  // Disable text input during steps where chips are the primary interaction
-  const inputDisabled = loading || submitting || step === "tipo" || step === "loja";
+  const inputDisabled = loading || submitting || step === "tipo" || step === "loja" || step === "horario";
 
   const inputPlaceholder =
     step === "atendente" ? "Ou digita o nome do atendente…" :
     step === "tipo" || step === "loja" ? "Usa os botões acima…" :
     step === "cliente" ? "Nome do cliente…" :
     step === "data" ? "Ou digita a data (ex: 28/02)…" :
+    step === "horario" ? "Usa os botões acima…" :
     "Digite ou cole o pedido aqui…";
 
   return (
@@ -718,7 +773,7 @@ export function ChatOrderModal({ onClose, onCreated }: ChatOrderModalProps) {
               <Send className="h-4 w-4" />
             </button>
           </div>
-          {step !== "tipo" && step !== "loja" && (
+          {step !== "tipo" && step !== "loja" && step !== "horario" && (
             <p className="text-xs text-gray-400 mt-1.5 text-center">
               Enter para enviar · Shift+Enter para nova linha
             </p>

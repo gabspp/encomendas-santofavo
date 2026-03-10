@@ -161,7 +161,7 @@ export default function SoPdm() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-brand-brown">Só Pães de Mel</h1>
+          <h1 className="text-xl md:text-2xl font-bold text-brand-brown">Só Pães de Mel</h1>
           <p className="text-sm text-gray-500 mt-0.5">
             Pedidos com PDM por data de {viewLabel} · próximos 60 dias
           </p>

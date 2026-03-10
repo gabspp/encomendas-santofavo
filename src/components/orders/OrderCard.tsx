@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
+import { Clock } from "lucide-react";
 import type { ParsedOrder, ProductItem, OrderStatus } from "@/types";
-import { formatBrDateWithDay } from "@/utils/notion";
+import { formatBrDateWithDay, extractHorario, stripHorario } from "@/utils/notion";
 
 // ── Status ───────────────────────────────────────────────────────────────────
 
@@ -307,6 +308,8 @@ interface OrderCardProps {
 
 export function OrderCard({ order, onStatusChange, onEntregaChange, onDateChange }: OrderCardProps) {
   const category = CATEGORY_MAP[order.icon] ?? null;
+  const horario = extractHorario(order.observacao);
+  const obsText = stripHorario(order.observacao);
 
   const { pdm, bolos, outros, pdmTotal } = categorizeProducts(order.products);
   const groups = [
@@ -328,7 +331,7 @@ export function OrderCard({ order, onStatusChange, onEntregaChange, onDateChange
 
         {/* Nome + categoria */}
         <div className="flex-1 min-w-0 pt-0.5">
-          <h3 className="font-bold text-gray-900 text-sm leading-tight truncate">
+          <h3 className="font-bold text-gray-900 text-sm leading-tight break-words">
             {order.cliente || "—"}
           </h3>
           <div className="flex flex-wrap gap-1">
@@ -378,6 +381,14 @@ export function OrderCard({ order, onStatusChange, onEntregaChange, onDateChange
         />
       </div>
 
+      {/* ── Horário de entrega ─────────────────────────────────────────── */}
+      {horario && (
+        <div className="border-t border-amber-100 bg-amber-50 px-4 py-1.5 flex items-center gap-1.5 text-xs text-amber-700">
+          <Clock className="h-3 w-3 shrink-0" />
+          <span className="font-semibold">{horario}</span>
+        </div>
+      )}
+
       {/* ── Produtos ───────────────────────────────────────────────────── */}
       {order.products.length > 0 && (
         <div className="border-t border-gray-100 px-4 py-3">
@@ -408,9 +419,9 @@ export function OrderCard({ order, onStatusChange, onEntregaChange, onDateChange
       )}
 
       {/* ── Observação ─────────────────────────────────────────────────── */}
-      {order.observacao && (
+      {obsText && (
         <div className="border-t border-orange-100 bg-orange-50 px-4 py-2 text-xs text-orange-800">
-          <span className="font-semibold">Obs!</span> {order.observacao}
+          <span className="font-semibold">Obs!</span> {obsText}
         </div>
       )}
 
