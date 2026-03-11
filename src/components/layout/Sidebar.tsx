@@ -7,7 +7,9 @@ import {
   Cake,
   Coffee,
   Egg,
+  LogOut,
 } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 
 const navItems = [
   { name: "Hoje e Próximos Dias", href: "/",          icon: CalendarDays },
@@ -21,6 +23,7 @@ const navItems = [
 
 export function Sidebar() {
   const location = useLocation();
+  const { signOut, user, role } = useAuth();
 
   return (
     <aside className="w-56 shrink-0 bg-brand-brown text-white hidden md:flex flex-col h-full">
@@ -33,7 +36,7 @@ export function Sidebar() {
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 px-2 py-4 space-y-0.5">
+      <nav className="flex-1 px-2 py-4 space-y-0.5 overflow-y-auto">
         {navItems.map((item) => {
           const isActive = location.pathname === item.href;
           const Icon = item.icon;
@@ -56,8 +59,20 @@ export function Sidebar() {
       </nav>
 
       {/* Footer */}
-      <div className="px-4 py-3 border-t border-white/10">
-        <p className="text-white/30 text-xs">Atualização automática: 2 min</p>
+      <div className="px-4 py-3 border-t border-white/10 mt-auto">
+        {user && (
+          <div className="mb-3 px-1">
+            <p className="text-xs text-brand-yellow truncate">{user.email}</p>
+            <p className="text-[10px] text-white/50 uppercase tracking-widest">{role}</p>
+          </div>
+        )}
+        <button
+          onClick={signOut}
+          className="flex w-full items-center gap-2 px-3 py-1.5 text-sm text-white/50 hover:bg-white/10 hover:text-white rounded-md transition-colors"
+        >
+          <LogOut className="h-4 w-4" />
+          Sair
+        </button>
       </div>
     </aside>
   );

@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { Clock } from "lucide-react";
 import type { ParsedOrder, ProductItem, OrderStatus } from "@/types";
 import { formatBrDateWithDay, extractHorario, stripHorario } from "@/utils/notion";
+import { useAuth } from "@/contexts/AuthContext";
 
 // ── Status ───────────────────────────────────────────────────────────────────
 
@@ -21,6 +22,8 @@ interface StatusDropdownProps {
 }
 
 function StatusDropdown({ orderId, current, onStatusChange }: StatusDropdownProps) {
+  const { role } = useAuth();
+  const isAdmin = role === "admin";
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -52,10 +55,10 @@ function StatusDropdown({ orderId, current, onStatusChange }: StatusDropdownProp
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen((o) => !o)}
-        disabled={saving}
-        className={`text-xs font-medium px-2 py-0.5 rounded-full transition-opacity cursor-pointer
+        disabled={saving || !isAdmin}
+        className={`text-xs font-medium px-2 py-0.5 rounded-full transition-opacity ${isAdmin ? "cursor-pointer hover:opacity-80" : "cursor-default"}
           ${STATUS_STYLES[current] ?? "bg-gray-100 text-gray-500"}
-          ${saving ? "opacity-50 cursor-wait" : "hover:opacity-80"}`}
+          ${saving ? "opacity-50 cursor-wait" : ""}`}
       >
         {current || "—"}
       </button>
@@ -98,6 +101,8 @@ interface EntregaDropdownProps {
 }
 
 function EntregaDropdown({ orderId, current, onEntregaChange }: EntregaDropdownProps) {
+  const { role } = useAuth();
+  const isAdmin = role === "admin";
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -133,8 +138,8 @@ function EntregaDropdown({ orderId, current, onEntregaChange }: EntregaDropdownP
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen((o) => !o)}
-        disabled={saving}
-        className={`text-sm font-semibold text-gray-800 text-right hover:opacity-70 transition-opacity cursor-pointer
+        disabled={saving || !isAdmin}
+        className={`text-sm font-semibold text-gray-800 text-right transition-opacity ${isAdmin ? "hover:opacity-70 cursor-pointer" : "cursor-default"}
           ${saving ? "opacity-50 cursor-wait" : ""}`}
       >
         {isEnt ? "Entrega" : "Retirada"}
@@ -175,6 +180,8 @@ interface DateCellProps {
 }
 
 function DateCell({ label, isoDate, orderId, field, onDateChange }: DateCellProps) {
+  const { role } = useAuth();
+  const isAdmin = role === "admin";
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -213,9 +220,9 @@ function DateCell({ label, isoDate, orderId, field, onDateChange }: DateCellProp
         />
       ) : (
         <button
-          onClick={() => setEditing(true)}
-          disabled={saving}
-          className={`text-left font-medium text-gray-700 hover:text-brand-brown transition-colors cursor-pointer w-full
+          onClick={() => { if (isAdmin) setEditing(true); }}
+          disabled={saving || !isAdmin}
+          className={`text-left font-medium text-gray-700 w-full transition-colors ${isAdmin ? "hover:text-brand-brown cursor-pointer" : "cursor-default"}
             ${saving ? "opacity-50 cursor-wait" : ""}`}
         >
           {formatBrDateWithDay(isoDate) || "—"}

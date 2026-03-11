@@ -6,10 +6,13 @@ import { NewOrderModal } from "@/components/orders/NewOrderModal";
 import { ChatOrderModal } from "@/components/orders/ChatOrderModal";
 import { formatBrDateWithDay } from "@/utils/notion";
 import { RefreshCw, Plus, MessageSquare } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 
 const DAY_LABELS = ["HOJE", "AMANHÃ", "DEPOIS DE AMANHÃ"];
 
 export default function HojeAmanha() {
+  const { role } = useAuth();
+  const isAdmin = role === "admin";
   const {
     groupedByDate,
     loading,
@@ -43,22 +46,26 @@ export default function HojeAmanha() {
 
         <div className="flex items-center gap-3">
           {/* Chat button */}
-          <button
-            onClick={() => setIsChatOpen(true)}
-            className="flex items-center gap-1.5 text-sm font-medium border border-brand-brown text-brand-brown px-3 py-1.5 rounded-lg hover:bg-brand-brown hover:text-white transition-colors cursor-pointer"
-          >
-            <MessageSquare className="h-4 w-4" />
-            Chat
-          </button>
+          {isAdmin && (
+            <button
+              onClick={() => setIsChatOpen(true)}
+              className="flex items-center gap-1.5 text-sm font-medium border border-brand-brown text-brand-brown px-3 py-1.5 rounded-lg hover:bg-brand-brown hover:text-white transition-colors cursor-pointer"
+            >
+              <MessageSquare className="h-4 w-4" />
+              Chat
+            </button>
+          )}
 
           {/* New order button */}
-          <button
-            onClick={() => setIsModalOpen(true)}
-            className="flex items-center gap-1.5 text-sm font-semibold bg-brand-brown text-white px-3 py-1.5 rounded-lg hover:opacity-90 transition-opacity cursor-pointer"
-          >
-            <Plus className="h-4 w-4" />
-            Novo Pedido
-          </button>
+          {isAdmin && (
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className="flex items-center gap-1.5 text-sm font-semibold bg-brand-brown text-white px-3 py-1.5 rounded-lg hover:opacity-90 transition-opacity cursor-pointer"
+            >
+              <Plus className="h-4 w-4" />
+              Novo Pedido
+            </button>
+          )}
 
           {/* Refresh button */}
           <button
