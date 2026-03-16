@@ -315,6 +315,9 @@ interface OrderCardProps {
 
 export function OrderCard({ order, onStatusChange, onEntregaChange, onDateChange }: OrderCardProps) {
   const category = CATEGORY_MAP[order.icon] ?? null;
+  const hasPascoa = order.products.some(
+    (p) => (p.name.includes("Ovo") || p.name.includes("Barra")) && p.qty > 0
+  );
   const horario = extractHorario(order.observacao);
   const obsText = stripHorario(order.observacao);
 
@@ -345,6 +348,11 @@ export function OrderCard({ order, onStatusChange, onEntregaChange, onDateChange
             {category && (
               <span className={`inline-block mt-1 text-xs font-medium px-2 py-0.5 rounded-full ${category.className}`}>
                 {category.label}
+              </span>
+            )}
+            {hasPascoa && order.icon !== "🐰" && (
+              <span className="inline-block mt-1 text-xs font-medium px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-800">
+                🥚 Páscoa
               </span>
             )}
             {order.revenda && (

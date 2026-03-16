@@ -8,6 +8,7 @@ const DEFAULT_FILTERS: FilterState = {
   saida: "todos",
   categoria: "todas",
   dateField: "producao",
+  status: "todos",
 };
 
 export function useOrders() {
@@ -70,7 +71,10 @@ export function useOrders() {
       (filters.categoria === "bolo"    && hasBolo) ||
       (filters.categoria === "revenda" && order.revenda);
 
-    return lojaMatch && saidaMatch && categoriaMatch;
+    const statusMatch =
+      filters.status === "todos" || order.status === filters.status;
+
+    return lojaMatch && saidaMatch && categoriaMatch && statusMatch;
   });
 
   // Group filtered orders by the selected date field

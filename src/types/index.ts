@@ -32,6 +32,7 @@ export interface NewOrderDraft {
   complemento: string;   // complemento (opcional)
   dataEntrega: string;   // "YYYY-MM-DD"
   dataProducao: string;  // "YYYY-MM-DD"
+  horario: string;       // "HH:MM" (opcional)
   entrega: string;
   metodoPagamento: string;
   taxaEntrega: string;   // string para input binding
@@ -45,4 +46,5 @@ export interface FilterState {
   saida: "todos" | "entrega" | "retirada";
   categoria: "todas" | "pdm" | "bolo" | "revenda";
   dateField: "producao" | "entrega";
+  status: "todos" | "Em aberto" | "Confirmado" | "Pronto" | "Entregue";
 }

@@ -75,6 +75,7 @@ const BLANK_DRAFT: NewOrderDraft = {
   complemento: "",
   dataEntrega: "",
   dataProducao: "",
+  horario: "",
   entrega: "",
   metodoPagamento: "",
   taxaEntrega: "",
@@ -322,6 +323,18 @@ function StepPedido({ draft, setDraft, metodoOptions, onEntregaDateChange }: Ste
         </select>
       </div>
 
+      {/* Horário de entrega */}
+      <div>
+        <label className={labelCls}>Horário de entrega</label>
+        <input
+          type="time"
+          value={draft.horario}
+          onChange={(e) => setDraft((d) => ({ ...d, horario: e.target.value }))}
+          className={inputCls}
+        />
+        <p className="text-xs text-gray-400 mt-1">Opcional. Aparece no card do pedido.</p>
+      </div>
+
       {/* Taxa de Entrega */}
       <div>
         <label className={labelCls}>Taxa de entrega (R$)</label>
@@ -398,9 +411,14 @@ function StepProdutos({ draft, activeTab, setActiveTab, setQty }: StepProdutosPr
                 >
                   −
                 </button>
-                <span className={`w-6 text-center text-sm font-medium ${qty > 0 ? "text-brand-brown" : "text-gray-400"}`}>
-                  {qty}
-                </span>
+                <input
+                  type="number"
+                  min="0"
+                  value={qty === 0 ? "" : qty}
+                  onChange={(e) => setQty(field, parseInt(e.target.value, 10) || 0)}
+                  className={`w-10 text-center text-sm font-medium border-b border-gray-200 outline-none bg-transparent focus:border-brand-brown transition-colors ${qty > 0 ? "text-brand-brown" : "text-gray-400"}`}
+                  placeholder="0"
+                />
                 <button
                   onClick={() => setQty(field, qty + 1)}
                   className="w-7 h-7 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 flex items-center justify-center text-base leading-none cursor-pointer transition-colors"
@@ -454,6 +472,7 @@ function StepRevisao({ draft, setDraft, submitError }: StepRevisaoProps) {
         )}
         <Row label="Data de entrega" value={formatBrDateWithDay(draft.dataEntrega)} />
         <Row label="Data de produção" value={formatBrDateWithDay(draft.dataProducao)} />
+        {draft.horario && <Row label="Horário" value={draft.horario} />}
         <Row label="Saída" value={draft.entrega} />
         {draft.metodoPagamento && <Row label="Pagamento" value={draft.metodoPagamento} />}
         {draft.taxaEntrega && parseFloat(draft.taxaEntrega) > 0 && (
@@ -603,6 +622,7 @@ export function NewOrderModal({ onClose, onCreated }: NewOrderModalProps) {
     setSubmitting(true);
     setSubmitError(null);
     try {
+      const horarioPrefix = draft.horario ? `Horário: ${draft.horario}\n` : "";
       const res = await fetch("/api/create-order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -613,6 +633,8 @@ export function NewOrderModal({ onClose, onCreated }: NewOrderModalProps) {
             endereco: [draft.endereco, draft.numero, draft.complemento]
               .filter((s) => s.trim())
               .join(", "),
+            // Prepend horario to observacao
+            observacao: horarioPrefix + draft.observacao,
           },
         }),
       });

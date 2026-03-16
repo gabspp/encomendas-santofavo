@@ -101,6 +101,19 @@ export function FilterBar({ filters, onChange, showCategoria = true }: FilterBar
         value={filters.saida}
         onChange={(v) => onChange({ ...filters, saida: v })}
       />
+
+      <PillGroup<FilterState["status"]>
+        label="Status"
+        options={[
+          { value: "todos",      label: "Todos" },
+          { value: "Em aberto",  label: "Em aberto" },
+          { value: "Confirmado", label: "Confirmado" },
+          { value: "Pronto",     label: "Pronto" },
+          { value: "Entregue",   label: "Entregue" },
+        ]}
+        value={filters.status}
+        onChange={(v) => onChange({ ...filters, status: v })}
+      />
     </div>
   );
 }
