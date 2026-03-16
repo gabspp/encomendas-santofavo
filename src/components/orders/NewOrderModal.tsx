@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { X, ChevronRight, ChevronLeft, Loader2, Info } from "lucide-react";
 import type { NewOrderDraft } from "@/types";
 import { formatBrDateWithDay } from "@/utils/notion";
@@ -245,6 +245,18 @@ function StepCliente({ draft, setDraft, onCepBlur, cepLoading }: StepClienteProp
 
 // ── Step 2: Pedido ────────────────────────────────────────────────────────────
 
+const HORARIO_CHIPS = ["8h", "9h", "10h", "11h", "12h", "13h", "14h", "15h", "16h", "17h", "18h", "19h"];
+
+function chipToHorario(chip: string): string {
+  return `${String(parseInt(chip, 10)).padStart(2, "0")}:00`;
+}
+
+function horarioToChip(horario: string): string | null {
+  if (!horario) return null;
+  const chip = `${parseInt(horario.split(":")[0], 10)}h`;
+  return HORARIO_CHIPS.includes(chip) && horario.endsWith(":00") ? chip : null;
+}
+
 interface StepPedidoProps {
   draft: NewOrderDraft;
   setDraft: React.Dispatch<React.SetStateAction<NewOrderDraft>>;
@@ -253,6 +265,20 @@ interface StepPedidoProps {
 }
 
 function StepPedido({ draft, setDraft, metodoOptions, onEntregaDateChange }: StepPedidoProps) {
+  const [showCustomTime, setShowCustomTime] = useState(false);
+  const timeRef = useRef<HTMLInputElement>(null);
+  const activeChip = horarioToChip(draft.horario);
+
+  function handleChipClick(chip: string) {
+    setDraft((d) => ({ ...d, horario: chipToHorario(chip) }));
+    setShowCustomTime(false);
+  }
+
+  function handleOutroClick() {
+    setShowCustomTime(true);
+    setTimeout(() => timeRef.current?.showPicker?.(), 50);
+  }
+
   return (
     <div className="space-y-4">
       {/* Data de Entrega */}
@@ -264,6 +290,60 @@ function StepPedido({ draft, setDraft, metodoOptions, onEntregaDateChange }: Ste
           onChange={(e) => onEntregaDateChange(e.target.value)}
           className={inputCls}
         />
+      </div>
+
+      {/* Horário de entrega */}
+      <div>
+        <p className={labelCls}>
+          Horário de entrega{" "}
+          <span className="text-gray-400 font-normal normal-case tracking-normal">· opcional</span>
+        </p>
+        <div className="flex flex-wrap gap-1.5">
+          {HORARIO_CHIPS.map((chip) => (
+            <button
+              key={chip}
+              onClick={() => handleChipClick(chip)}
+              className={`px-3 py-1.5 rounded-full text-sm transition-colors cursor-pointer ${
+                activeChip === chip
+                  ? "bg-brand-brown text-white font-semibold"
+                  : "border border-gray-200 text-gray-600 hover:border-gray-400"
+              }`}
+            >
+              {chip}
+            </button>
+          ))}
+          <button
+            onClick={handleOutroClick}
+            className={`px-3 py-1.5 rounded-full text-sm transition-colors cursor-pointer ${
+              draft.horario && !activeChip
+                ? "bg-brand-brown text-white font-semibold"
+                : "border border-gray-200 text-gray-600 hover:border-gray-400"
+            }`}
+          >
+            {draft.horario && !activeChip ? draft.horario : "Outro"}
+          </button>
+        </div>
+
+        {showCustomTime && (
+          <input
+            ref={timeRef}
+            type="time"
+            value={draft.horario}
+            onChange={(e) => setDraft((d) => ({ ...d, horario: e.target.value }))}
+            onBlur={() => setShowCustomTime(false)}
+            className={`${inputCls} mt-2`}
+            autoFocus
+          />
+        )}
+
+        {draft.horario && (
+          <button
+            onClick={() => { setDraft((d) => ({ ...d, horario: "" })); setShowCustomTime(false); }}
+            className="text-xs text-gray-400 hover:text-gray-600 mt-1.5 cursor-pointer"
+          >
+            × Limpar
+          </button>
+        )}
       </div>
 
       {/* Data de Produção */}
@@ -321,18 +401,6 @@ function StepPedido({ draft, setDraft, metodoOptions, onEntregaDateChange }: Ste
             </option>
           ))}
         </select>
-      </div>
-
-      {/* Horário de entrega */}
-      <div>
-        <label className={labelCls}>Horário de entrega</label>
-        <input
-          type="time"
-          value={draft.horario}
-          onChange={(e) => setDraft((d) => ({ ...d, horario: e.target.value }))}
-          className={inputCls}
-        />
-        <p className="text-xs text-gray-400 mt-1">Opcional. Aparece no card do pedido.</p>
       </div>
 
       {/* Taxa de Entrega */}
