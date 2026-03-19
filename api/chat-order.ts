@@ -104,7 +104,7 @@ REGRAS PARA CAIXAS DE PÃO DE MEL:
 - "Caixa com N Pães De Mel" → registre "Caixa N" (ex: "Caixa com 6 Pães De Mel" → "Caixa 6": 1)
 - Os sabores listados DENTRO da caixa são pães de mel individuais (🟫 PDM DLN, 🟥 PDM CAR, etc.) — registre cada um
 - ATENÇÃO CRÍTICA: "Pão de Mel - [Sabor]" dentro de uma caixa é um PDM individual (🟫 PDM DLN, 🟥 PDM CAR...), NÃO é um ovo!
-- "Pão de Mel - Chocolate" não existe no sistema — ignore ou mencione na observação
+- "Pão de Mel - Chocolate" (ou qualquer sabor especial do mês) → "⬜️ PDM MÊS"
 - NUNCA confunda "Ovo Pão de Mel - [Sabor]" (produto de páscoa grande) com "Pão de Mel - [Sabor]" (PDM individual)
 
 DISTINÇÃO CRÍTICA — OVO vs PDM:
