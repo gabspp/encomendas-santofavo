@@ -69,8 +69,8 @@ CAMPOS OBRIGATÓRIOS (colete todos estes):
 - entrega (tipo): ${ENTREGA_OPTIONS.join(", ")}
 - metodoPagamento (se já foi pago) — se não foi pago, deixe em branco
 
-CAMPOS OPCIONAIS (colete se aparecerem):
-- telefone, endereco, observacao, taxaEntrega, revenda, products
+CAMPOS OPCIONAIS (colete APENAS se o usuário mencionar — nunca pergunte proativamente):
+- telefone, endereco, observacao, taxaEntrega, revenda, products, horário de entrega
 
 PRODUTOS VÁLIDOS:
 ${PRODUCT_FIELDS.join(", ")}
