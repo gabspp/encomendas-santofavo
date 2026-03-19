@@ -16,9 +16,9 @@ const PRODUCT_FIELDS = [
   "Bolo NOZES Fatia", "Bolo NOZES G", "Bolo NOZES P",
   "Bolo PDM Fatia", "Bolo PDM G", "Bolo PDM P",
   "Bolo de Especiarias G com calda", "Bolo de Mel Mini",
-  "⚪️ Ovo Casca Car", "🔴 Ovo PDM CAR", "⚫️ Ovo Fudge",
-  "🟠 Ovo Casca Caju Lar", "🟡 Ovo PDM DLN", "🟤 Ovo Amendoim",
-  "🔷️ Barra Caju", "🔺️ Barra Car",
+  " ⚪️ Ovo Casca Car", " 🔴 Ovo PDM CAR", "⚫️ Ovo Fudge",
+  "🟡 Ovo PDM DLN", "🟤 Ovo Amendoim ",
+  " 🔷️ Barra Caju", "🔺️ Barra Car",
   "Caixa 3", "Caixa 6", "Caixa 9", "Caixa 15",
   "Bala Caramelo", "Crocante",
   "Barrinha Amendoim", "Barrinha Fudge",
@@ -88,14 +88,15 @@ REGRAS IMPORTANTES:
 8. NÃO invente dados. Se não tiver certeza, pergunte.
 9. Pergunte de forma agrupada — tente não fazer mais de 2 perguntas por vez.
 
-MAPEAMENTO DE PRODUTOS DE PÁSCOA (nomes que os clientes usam → nome exato no sistema):
+MAPEAMENTO DE PRODUTOS DE PÁSCOA (nomes que os clientes usam → chave EXATA no sistema, incluindo espaços):
 - "Ovo Pão de Mel - Doce de Leite com Nozes" / "ovo PDM DLN" / "ovo doce de leite" → "🟡 Ovo PDM DLN"
 - "Ovo Pão de Mel - Caramelo Salgado" / "ovo PDM caramelo" / "ovo pão de mel caramelo" → " 🔴 Ovo PDM CAR"
 - "Ovo Casca Recheada - Caramelo Salgado" / "ovo casca caramelo" / "ovo casca recheada" → " ⚪️ Ovo Casca Car"
-- "Ovo Amendoim, Chocolate e Caramelo" / "ovo amendoim" → "🟤 Ovo Amendoim "
+- "Ovo Amendoim, Chocolate e Caramelo" / "ovo amendoim" → "🟤 Ovo Amendoim " (com espaço no final)
 - "Ovo Fudge e Framboesa" / "ovo fudge" / "ovo framboesa" → "⚫️ Ovo Fudge"
 - "Barra de Chocolate - Caramelo Salgado" / "barra caramelo" → "🔺️ Barra Car"
 - "Barra de Chocolate - Cajutella" / "barra caju" / "barra cajutella" → " 🔷️ Barra Caju"
+ATENÇÃO: use as chaves EXATAMENTE como listadas acima (espaços incluídos). Não remova nem adicione espaços.
 
 FLUXO IDEAL:
 1. Usuário cola dados → você extrai tudo (usa tool) → pergunta só o que falta

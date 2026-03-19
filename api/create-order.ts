@@ -86,10 +86,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     .some((f) => (draft.products?.[f] ?? 0) > 0);
   const icon = hasBolo ? "🎂" : "🟢";
 
-  // Build product number properties
+  // Build product number properties — only send non-zero quantities to avoid
+  // Notion rejecting the request if a column was renamed/removed
   const productProps: Record<string, { number: number }> = {};
   for (const field of NUMBER_PRODUCT_FIELDS) {
-    productProps[field] = { number: draft.products?.[field] ?? 0 };
+    const qty = draft.products?.[field] ?? 0;
+    if (qty > 0) {
+      productProps[field] = { number: qty };
+    }
   }
 
   try {
