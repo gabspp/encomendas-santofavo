@@ -649,14 +649,14 @@ export function ChatOrderModal({ onClose, onCreated }: ChatOrderModalProps) {
   }
 
   const chipsDisabled = loading || submitting;
-  const inputDisabled = loading || submitting || step === "tipo" || step === "loja" || step === "horario";
+  const inputDisabled = loading || submitting;
 
   const inputPlaceholder =
     step === "atendente" ? "Ou digita o nome do atendente…" :
-    step === "tipo" || step === "loja" ? "Usa os botões acima…" :
-    step === "cliente" ? "Nome do cliente…" :
+    step === "tipo" || step === "loja" ? "Ou cola o pedido completo aqui…" :
+    step === "cliente" ? "Nome do cliente… (ou cola o pedido completo)" :
     step === "data" ? "Ou digita a data (ex: 28/02)…" :
-    step === "horario" ? "Usa os botões acima…" :
+    step === "horario" ? "Ou cola o pedido completo aqui…" :
     "Digite ou cole o pedido aqui…";
 
   return (
