@@ -88,6 +88,15 @@ REGRAS IMPORTANTES:
 8. NÃO invente dados. Se não tiver certeza, pergunte.
 9. Pergunte de forma agrupada — tente não fazer mais de 2 perguntas por vez.
 
+MAPEAMENTO DE PRODUTOS DE PÁSCOA (nomes que os clientes usam → nome exato no sistema):
+- "Ovo Pão de Mel - Doce de Leite com Nozes" / "ovo PDM DLN" / "ovo doce de leite" → "🟡 Ovo PDM DLN"
+- "Ovo Pão de Mel - Caramelo Salgado" / "ovo PDM caramelo" / "ovo pão de mel caramelo" → " 🔴 Ovo PDM CAR"
+- "Ovo Casca Recheada - Caramelo Salgado" / "ovo casca caramelo" / "ovo casca recheada" → " ⚪️ Ovo Casca Car"
+- "Ovo Amendoim, Chocolate e Caramelo" / "ovo amendoim" → "🟤 Ovo Amendoim "
+- "Ovo Fudge e Framboesa" / "ovo fudge" / "ovo framboesa" → "⚫️ Ovo Fudge"
+- "Barra de Chocolate - Caramelo Salgado" / "barra caramelo" → "🔺️ Barra Car"
+- "Barra de Chocolate - Cajutella" / "barra caju" / "barra cajutella" → " 🔷️ Barra Caju"
+
 FLUXO IDEAL:
 1. Usuário cola dados → você extrai tudo (usa tool) → pergunta só o que falta
 2. Se tiver atendente + cliente + entrega + data + pagamento → diga que está completo`;
