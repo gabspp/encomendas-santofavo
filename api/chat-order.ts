@@ -89,14 +89,28 @@ REGRAS IMPORTANTES:
 9. Pergunte de forma agrupada — tente não fazer mais de 2 perguntas por vez.
 
 MAPEAMENTO DE PRODUTOS DE PÁSCOA (nomes que os clientes usam → chave EXATA no sistema, incluindo espaços):
-- "Ovo Pão de Mel - Doce de Leite com Nozes" / "ovo PDM DLN" / "ovo doce de leite" → "🟡 Ovo PDM DLN"
-- "Ovo Pão de Mel - Caramelo Salgado" / "ovo PDM caramelo" / "ovo pão de mel caramelo" → " 🔴 Ovo PDM CAR"
-- "Ovo Casca Recheada - Caramelo Salgado" / "ovo casca caramelo" / "ovo casca recheada" → " ⚪️ Ovo Casca Car"
-- "Ovo Amendoim, Chocolate e Caramelo" / "ovo amendoim" → "🟤 Ovo Amendoim " (com espaço no final)
-- "Ovo Fudge e Framboesa" / "ovo fudge" / "ovo framboesa" → "⚫️ Ovo Fudge"
+OVOS (produtos grandes de páscoa — têm a palavra "Ovo" no nome do pedido):
+- "Ovo Pão de Mel - Doce de Leite com Nozes" / "Ovo PDM DLN" / "ovo doce de leite" → "🟡 Ovo PDM DLN"
+- "Ovo Pão de Mel - Caramelo Salgado" / "Ovo PDM Caramelo" / "ovo pão de mel caramelo" → " 🔴 Ovo PDM CAR"
+- "Ovo Casca Recheada - Caramelo Salgado" / "Ovo Casca Caramelo" / "ovo casca recheada" → " ⚪️ Ovo Casca Car"
+- "Ovo Amendoim, Chocolate e Caramelo" / "Ovo Amendoim" → "🟤 Ovo Amendoim " (com espaço no final)
+- "Ovo Fudge e Framboesa" / "Ovo Fudge" → "⚫️ Ovo Fudge"
+BARRAS:
 - "Barra de Chocolate - Caramelo Salgado" / "barra caramelo" → "🔺️ Barra Car"
 - "Barra de Chocolate - Cajutella" / "barra caju" / "barra cajutella" → " 🔷️ Barra Caju"
 ATENÇÃO: use as chaves EXATAMENTE como listadas acima (espaços incluídos). Não remova nem adicione espaços.
+
+REGRAS PARA CAIXAS DE PÃO DE MEL:
+- "Caixa com N Pães De Mel" → registre "Caixa N" (ex: "Caixa com 6 Pães De Mel" → "Caixa 6": 1)
+- Os sabores listados DENTRO da caixa são pães de mel individuais (🟫 PDM DLN, 🟥 PDM CAR, etc.) — registre cada um
+- ATENÇÃO CRÍTICA: "Pão de Mel - [Sabor]" dentro de uma caixa é um PDM individual (🟫 PDM DLN, 🟥 PDM CAR...), NÃO é um ovo!
+- "Pão de Mel - Chocolate" não existe no sistema — ignore ou mencione na observação
+- NUNCA confunda "Ovo Pão de Mel - [Sabor]" (produto de páscoa grande) com "Pão de Mel - [Sabor]" (PDM individual)
+
+DISTINÇÃO CRÍTICA — OVO vs PDM:
+- "Ovo Pão de Mel - Caramelo Salgado" (2x) → " 🔴 Ovo PDM CAR": 2  (isso é um OVO DE PÁSCOA)
+- "Pão de Mel - Caramelo Salgado" (dentro da caixa) → "🟥 PDM CAR": 1  (isso é um PDM individual)
+São produtos DIFERENTES! Um pedido pode ter ambos ao mesmo tempo.
 
 FLUXO IDEAL:
 1. Usuário cola dados → você extrai tudo (usa tool) → pergunta só o que falta
@@ -160,7 +174,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     // Primeira chamada — Claude pode chamar update_draft
     const response1 = await anthropic.messages.create({
-      model: "claude-haiku-4-5-20251001",
+      model: "claude-sonnet-4-6",
       max_tokens: 1024,
       system: buildSystemPrompt(metodoOptions ?? [], today),
       tools: [UPDATE_DRAFT_TOOL],
@@ -197,7 +211,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         ];
 
         const response2 = await anthropic.messages.create({
-          model: "claude-haiku-4-5-20251001",
+          model: "claude-sonnet-4-6",
           max_tokens: 512,
           system: buildSystemPrompt(metodoOptions ?? [], today),
           tools: [UPDATE_DRAFT_TOOL],
