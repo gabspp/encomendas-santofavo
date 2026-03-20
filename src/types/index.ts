@@ -47,4 +47,5 @@ export interface FilterState {
   categoria: "todas" | "pdm" | "bolo" | "revenda";
   dateField: "producao" | "entrega";
   status: "todos" | "Em aberto" | "Confirmado" | "Pronto" | "Entregue";
+  atendente: string; // "" = todos
 }

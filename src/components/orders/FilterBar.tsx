@@ -1,5 +1,7 @@
 import type { FilterState } from "@/types";
 
+const ATENDENTES = ["Raissa", "Gabriel", "Maria", "Thamiris", "Karla", "Elen", "Carol"];
+
 interface FilterBarProps {
   filters: FilterState;
   onChange: (filters: FilterState) => void;
@@ -114,6 +116,22 @@ export function FilterBar({ filters, onChange, showCategoria = true }: FilterBar
         value={filters.status}
         onChange={(v) => onChange({ ...filters, status: v })}
       />
+
+      <div className="flex items-center gap-1.5">
+        <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider shrink-0">
+          Atendente
+        </span>
+        <select
+          value={filters.atendente}
+          onChange={(e) => onChange({ ...filters, atendente: e.target.value })}
+          className="text-xs border border-gray-200 rounded-full px-2.5 py-1 bg-white text-gray-700 focus:outline-none focus:border-gray-400 cursor-pointer"
+        >
+          <option value="">Todos</option>
+          {ATENDENTES.map((a) => (
+            <option key={a} value={a}>{a}</option>
+          ))}
+        </select>
+      </div>
     </div>
   );
 }

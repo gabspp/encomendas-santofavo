@@ -20,6 +20,7 @@ export function useOrdersRange(config: Config) {
     categoria: "todas",
     dateField: config.defaultDateField ?? "producao",
     status: "todos",
+    atendente: "",
   });
 
   const { startDate, endDate } = config;
@@ -77,7 +78,10 @@ export function useOrdersRange(config: Config) {
     const statusMatch =
       filters.status === "todos" || order.status === filters.status;
 
-    return lojaMatch && saidaMatch && categoriaMatch && statusMatch;
+    const atendenteMatch =
+      !filters.atendente || order.atendente === filters.atendente;
+
+    return lojaMatch && saidaMatch && categoriaMatch && statusMatch && atendenteMatch;
   });
 
   // Collect unique dates (from the selected date field) and group orders
