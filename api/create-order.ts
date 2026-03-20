@@ -54,6 +54,13 @@ const NUMBER_PRODUCT_FIELDS = [
   "Barrinha Queijo, doce de leite e ameixa",
 ];
 
+interface BoxConfigBody {
+  id: string;
+  size: number;
+  flavors: Record<string, number>;
+  quantity: number;
+}
+
 interface OrderDraftBody {
   atendente: string;
   cliente: string;
@@ -66,6 +73,7 @@ interface OrderDraftBody {
   taxaEntrega: string;
   revenda: boolean;
   products: Record<string, number>;
+  boxes?: BoxConfigBody[];
   observacao: string;
 }
 
@@ -93,6 +101,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const qty = draft.products?.[field] ?? 0;
     if (qty > 0) {
       productProps[field] = { number: qty };
+    }
+  }
+
+  // Add box quantities + PDM flavors from boxes[]
+  for (const box of draft.boxes ?? []) {
+    if (box.quantity <= 0) continue;
+    const caixaField = `Caixa ${box.size}`;
+    productProps[caixaField] = { number: (productProps[caixaField]?.number ?? 0) + box.quantity };
+    for (const [flavor, qty] of Object.entries(box.flavors)) {
+      if (qty > 0) {
+        productProps[flavor] = { number: (productProps[flavor]?.number ?? 0) + qty * box.quantity };
+      }
     }
   }
 

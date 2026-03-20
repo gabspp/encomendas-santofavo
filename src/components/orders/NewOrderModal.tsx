@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { X, ChevronRight, ChevronLeft, Loader2, Info } from "lucide-react";
-import type { NewOrderDraft } from "@/types";
-import { formatBrDateWithDay } from "@/utils/notion";
+import type { BoxConfig, NewOrderDraft } from "@/types";
+import { formatBrDateWithDay, buildCaixasStr, PDM_FLAVOR_FIELDS, PDM_SHORT } from "@/utils/notion";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -35,10 +35,6 @@ const BOLO_FIELDS = [
 ] as const;
 
 const OUTROS_FIELDS = [
-  "Caixa 3",
-  "Caixa 6",
-  "Caixa 9",
-  "Caixa 15",
   "Bala Caramelo",
   "Crocante",
   "Barrinha Amendoim",
@@ -58,11 +54,14 @@ const PASCOA_FIELDS = [
   "🔺️ Barra Car",
 ] as const;
 
-const TABS = [
-  { key: "PDM" as const,    fields: PDM_FIELDS },
-  { key: "Bolos" as const,  fields: BOLO_FIELDS },
-  { key: "Outros" as const, fields: OUTROS_FIELDS },
-  { key: "Páscoa" as const, fields: PASCOA_FIELDS },
+type TabKey = "PDM" | "Bolos" | "Caixas" | "Outros" | "Páscoa";
+
+const TABS: { key: TabKey; fields: readonly string[] }[] = [
+  { key: "PDM",    fields: PDM_FIELDS },
+  { key: "Bolos",  fields: BOLO_FIELDS },
+  { key: "Caixas", fields: [] },
+  { key: "Outros", fields: OUTROS_FIELDS },
+  { key: "Páscoa", fields: PASCOA_FIELDS },
 ];
 
 const BLANK_DRAFT: NewOrderDraft = {
@@ -81,6 +80,7 @@ const BLANK_DRAFT: NewOrderDraft = {
   taxaEntrega: "",
   revenda: false,
   products: {},
+  boxes: [],
   observacao: "",
 };
 
@@ -420,33 +420,177 @@ function StepPedido({ draft, setDraft, metodoOptions, onEntregaDateChange }: Ste
   );
 }
 
-// ── Step 3: Produtos ──────────────────────────────────────────────────────────
+// ── Box Editor ────────────────────────────────────────────────────────────────
 
-type TabKey = "PDM" | "Bolos" | "Outros" | "Páscoa";
+const BOX_SIZES = [3, 6, 9, 15] as const;
+
+interface BoxEditorProps {
+  initial: BoxConfig;
+  onSave: (box: BoxConfig) => void;
+  onCancel: () => void;
+}
+
+function BoxEditor({ initial, onSave, onCancel }: BoxEditorProps) {
+  const [box, setBox] = useState<BoxConfig>(initial);
+  const total = Object.values(box.flavors).reduce((s, n) => s + n, 0);
+  const remaining = box.size - total;
+
+  function setFlavor(field: string, qty: number) {
+    setBox((b) => ({ ...b, flavors: { ...b.flavors, [field]: Math.max(0, qty) } }));
+  }
+
+  const canSave = box.size > 0 && total === box.size;
+
+  return (
+    <div className="space-y-4">
+      {/* Size selector */}
+      <div>
+        <p className={labelCls}>Tamanho da caixa</p>
+        <div className="flex gap-2">
+          {BOX_SIZES.map((s) => (
+            <button
+              key={s}
+              onClick={() => setBox((b) => ({ ...b, size: s }))}
+              className={`flex-1 py-2 rounded-lg text-sm font-semibold border transition-colors cursor-pointer ${
+                box.size === s
+                  ? "bg-brand-brown text-white border-brand-brown"
+                  : "border-gray-200 text-gray-700 hover:border-gray-400"
+              }`}
+            >
+              {s}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Flavor list */}
+      <div>
+        <div className="flex items-center justify-between mb-2">
+          <p className={`${labelCls} mb-0`}>Sabores</p>
+          <span className={`text-xs font-semibold ${
+            total === box.size ? "text-green-600" : total > box.size ? "text-red-500" : "text-gray-400"
+          }`}>
+            {total} / {box.size}
+            {remaining > 0 && <span className="font-normal text-gray-400 ml-1">(faltam {remaining})</span>}
+          </span>
+        </div>
+
+        {/* Progress bar */}
+        <div className="mb-3 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+          <div
+            className={`h-full rounded-full transition-all duration-200 ${
+              total > box.size ? "bg-red-400" : total === box.size ? "bg-green-500" : "bg-brand-brown"
+            }`}
+            style={{ width: `${Math.min(100, box.size > 0 ? (total / box.size) * 100 : 0)}%` }}
+          />
+        </div>
+
+        <div className="space-y-1">
+          {PDM_FLAVOR_FIELDS.map((field) => {
+            const qty = box.flavors[field] ?? 0;
+            return (
+              <div key={field} className="flex items-center justify-between py-1">
+                <span className="text-sm text-gray-700 flex-1 mr-4">{field.trim()}</span>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    onClick={() => setFlavor(field, qty - 1)}
+                    disabled={qty === 0}
+                    className="w-7 h-7 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 disabled:opacity-30 flex items-center justify-center text-base leading-none cursor-pointer disabled:cursor-not-allowed transition-colors"
+                  >
+                    −
+                  </button>
+                  <span className={`w-8 text-center text-sm font-medium ${qty > 0 ? "text-brand-brown" : "text-gray-300"}`}>
+                    {qty}
+                  </span>
+                  <button
+                    onClick={() => setFlavor(field, qty + 1)}
+                    className="w-7 h-7 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 flex items-center justify-center text-base leading-none cursor-pointer transition-colors"
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Actions */}
+      <div className="flex gap-2 pt-1">
+        <button
+          onClick={onCancel}
+          className="flex-1 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg cursor-pointer hover:border-gray-300 transition-colors"
+        >
+          Cancelar
+        </button>
+        <button
+          onClick={() => onSave(box)}
+          disabled={!canSave}
+          className="flex-1 py-2 text-sm font-semibold bg-brand-brown text-white rounded-lg disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed hover:opacity-90 transition-opacity"
+        >
+          Salvar caixa
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── Step 3: Produtos ──────────────────────────────────────────────────────────
 
 interface StepProdutosProps {
   draft: NewOrderDraft;
+  setDraft: React.Dispatch<React.SetStateAction<NewOrderDraft>>;
   activeTab: TabKey;
   setActiveTab: (tab: TabKey) => void;
   setQty: (field: string, qty: number) => void;
 }
 
-function StepProdutos({ draft, activeTab, setActiveTab, setQty }: StepProdutosProps) {
-  const currentFields = TABS.find((t) => t.key === activeTab)?.fields ?? [];
+function StepProdutos({ draft, setDraft, activeTab, setActiveTab, setQty }: StepProdutosProps) {
+  // "new" = BoxEditor for a new box; a UUID = BoxEditor to edit that box; null = list view
+  const [editingBoxId, setEditingBoxId] = useState<string | null>(null);
 
+  const currentFields = TABS.find((t) => t.key === activeTab)?.fields ?? [];
   const pdmTotal = PDM_FIELDS.reduce((sum, f) => sum + (draft.products[f] ?? 0), 0);
+
+  function saveBox(box: BoxConfig) {
+    if (box.id === "") {
+      // New box
+      const newBox = { ...box, id: crypto.randomUUID() };
+      setDraft((d) => ({ ...d, boxes: [...d.boxes, newBox] }));
+    } else {
+      // Edit existing
+      setDraft((d) => ({ ...d, boxes: d.boxes.map((b) => (b.id === box.id ? box : b)) }));
+    }
+    setEditingBoxId(null);
+  }
+
+  function updateBoxQty(id: string, qty: number) {
+    if (qty < 1) return;
+    setDraft((d) => ({ ...d, boxes: d.boxes.map((b) => (b.id === id ? { ...b, quantity: qty } : b)) }));
+  }
+
+  function removeBox(id: string) {
+    setDraft((d) => ({ ...d, boxes: d.boxes.filter((b) => b.id !== id) }));
+  }
+
+  const editingBox = editingBoxId === "new"
+    ? { id: "", size: 6 as const, flavors: {}, quantity: 1 }
+    : draft.boxes.find((b) => b.id === editingBoxId) ?? null;
 
   return (
     <div className="space-y-3">
       {/* Category tabs */}
-      <div className="flex gap-1.5">
+      <div className="flex gap-1">
         {TABS.map((tab) => {
-          const tabTotal = tab.fields.reduce((s, f) => s + (draft.products[f] ?? 0), 0);
+          const tabTotal =
+            tab.key === "Caixas"
+              ? draft.boxes.reduce((s, b) => s + b.quantity, 0)
+              : tab.fields.reduce((s, f) => s + (draft.products[f] ?? 0), 0);
           const active = activeTab === tab.key;
           return (
             <button
               key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
+              onClick={() => { setActiveTab(tab.key); setEditingBoxId(null); }}
               className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-colors cursor-pointer ${
                 active
                   ? "bg-brand-brown text-white"
@@ -464,46 +608,118 @@ function StepProdutos({ draft, activeTab, setActiveTab, setQty }: StepProdutosPr
         })}
       </div>
 
-      {/* Product rows */}
-      <div className="space-y-1">
-        {(currentFields as readonly string[]).map((field) => {
-          const qty = draft.products[field] ?? 0;
-          return (
-            <div key={field} className="flex items-center justify-between py-1">
-              <span className="text-sm text-gray-700 flex-1 mr-4">{field.trim()}</span>
-              <div className="flex items-center gap-2 shrink-0">
-                <button
-                  onClick={() => setQty(field, qty - 1)}
-                  disabled={qty === 0}
-                  className="w-7 h-7 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 disabled:opacity-30 flex items-center justify-center text-base leading-none cursor-pointer disabled:cursor-not-allowed transition-colors"
-                >
-                  −
-                </button>
-                <input
-                  type="number"
-                  min="0"
-                  value={qty === 0 ? "" : qty}
-                  onChange={(e) => setQty(field, parseInt(e.target.value, 10) || 0)}
-                  className={`w-10 text-center text-sm font-medium border-b border-gray-200 outline-none bg-transparent focus:border-brand-brown transition-colors ${qty > 0 ? "text-brand-brown" : "text-gray-400"}`}
-                  placeholder="0"
-                />
-                <button
-                  onClick={() => setQty(field, qty + 1)}
-                  className="w-7 h-7 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 flex items-center justify-center text-base leading-none cursor-pointer transition-colors"
-                >
-                  +
-                </button>
-              </div>
-            </div>
-          );
-        })}
-      </div>
+      {/* Caixas tab */}
+      {activeTab === "Caixas" && (
+        editingBox ? (
+          <BoxEditor
+            initial={editingBox}
+            onSave={saveBox}
+            onCancel={() => setEditingBoxId(null)}
+          />
+        ) : (
+          <div className="space-y-2">
+            {draft.boxes.map((box) => {
+              const flavorsStr = Object.entries(box.flavors)
+                .filter(([, q]) => q > 0)
+                .map(([f, q]) => `${PDM_SHORT[f] ?? f.trim()}×${q}`)
+                .join(" ");
+              return (
+                <div key={box.id} className="border border-gray-200 rounded-lg px-3 py-2.5">
+                  <div className="flex items-start gap-2">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-gray-800">Caixa {box.size}</p>
+                      <p className="text-xs text-gray-500 mt-0.5 break-words">{flavorsStr}</p>
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <button
+                        onClick={() => updateBoxQty(box.id, box.quantity - 1)}
+                        disabled={box.quantity <= 1}
+                        className="w-7 h-7 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 disabled:opacity-30 flex items-center justify-center text-base leading-none cursor-pointer disabled:cursor-not-allowed transition-colors"
+                      >
+                        −
+                      </button>
+                      <span className="text-sm font-semibold text-brand-brown w-6 text-center">
+                        {box.quantity}
+                      </span>
+                      <button
+                        onClick={() => updateBoxQty(box.id, box.quantity + 1)}
+                        className="w-7 h-7 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 flex items-center justify-center text-base leading-none cursor-pointer transition-colors"
+                      >
+                        +
+                      </button>
+                      <button
+                        onClick={() => setEditingBoxId(box.id)}
+                        className="ml-1 w-7 h-7 flex items-center justify-center text-gray-400 hover:text-brand-brown cursor-pointer transition-colors text-base"
+                        title="Editar"
+                      >
+                        ✎
+                      </button>
+                      <button
+                        onClick={() => removeBox(box.id)}
+                        className="w-7 h-7 flex items-center justify-center text-gray-300 hover:text-red-500 cursor-pointer transition-colors text-lg leading-none"
+                        title="Remover"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+            <button
+              onClick={() => setEditingBoxId("new")}
+              className="w-full py-3 border-2 border-dashed border-gray-200 rounded-lg text-sm text-gray-500 hover:border-brand-brown hover:text-brand-brown transition-colors cursor-pointer"
+            >
+              + Adicionar Caixa
+            </button>
+          </div>
+        )
+      )}
 
-      {/* PDM total */}
-      {activeTab === "PDM" && pdmTotal > 0 && (
-        <div className="border-t border-gray-100 pt-2 text-sm font-semibold text-gray-700">
-          Total PDM: <span className="text-brand-brown">{pdmTotal}</span>
-        </div>
+      {/* Regular product rows (non-Caixas tabs) */}
+      {activeTab !== "Caixas" && (
+        <>
+          <div className="space-y-1">
+            {(currentFields as readonly string[]).map((field) => {
+              const qty = draft.products[field] ?? 0;
+              return (
+                <div key={field} className="flex items-center justify-between py-1">
+                  <span className="text-sm text-gray-700 flex-1 mr-4">{field.trim()}</span>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      onClick={() => setQty(field, qty - 1)}
+                      disabled={qty === 0}
+                      className="w-7 h-7 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 disabled:opacity-30 flex items-center justify-center text-base leading-none cursor-pointer disabled:cursor-not-allowed transition-colors"
+                    >
+                      −
+                    </button>
+                    <input
+                      type="number"
+                      min="0"
+                      value={qty === 0 ? "" : qty}
+                      onChange={(e) => setQty(field, parseInt(e.target.value, 10) || 0)}
+                      className={`w-10 text-center text-sm font-medium border-b border-gray-200 outline-none bg-transparent focus:border-brand-brown transition-colors ${qty > 0 ? "text-brand-brown" : "text-gray-400"}`}
+                      placeholder="0"
+                    />
+                    <button
+                      onClick={() => setQty(field, qty + 1)}
+                      className="w-7 h-7 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 flex items-center justify-center text-base leading-none cursor-pointer transition-colors"
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* PDM total */}
+          {activeTab === "PDM" && pdmTotal > 0 && (
+            <div className="border-t border-gray-100 pt-2 text-sm font-semibold text-gray-700">
+              Total PDM: <span className="text-brand-brown">{pdmTotal}</span>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
@@ -522,6 +738,15 @@ interface StepRevisaoProps {
 function StepRevisao({ draft, setDraft, submitError }: StepRevisaoProps) {
   const selectedProducts = ALL_FIELDS.filter((f) => (draft.products[f] ?? 0) > 0);
   const pdmTotal = PDM_FIELDS.reduce((sum, f) => sum + (draft.products[f] ?? 0), 0);
+
+  // Compute total PDM units inside boxes (by flavor)
+  const pdmInBoxes: Record<string, number> = {};
+  for (const box of draft.boxes) {
+    for (const [f, qty] of Object.entries(box.flavors)) {
+      if (qty > 0) pdmInBoxes[f] = (pdmInBoxes[f] ?? 0) + qty * box.quantity;
+    }
+  }
+  const totalPdmInBoxes = Object.values(pdmInBoxes).reduce((s, n) => s + n, 0);
 
   return (
     <div className="space-y-4">
@@ -548,6 +773,33 @@ function StepRevisao({ draft, setDraft, submitError }: StepRevisaoProps) {
         )}
       </div>
 
+      {/* Boxes summary */}
+      {draft.boxes.length > 0 && (
+        <div>
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Caixas</p>
+          <div className="space-y-1">
+            {draft.boxes.map((box) => {
+              const flavorsStr = Object.entries(box.flavors)
+                .filter(([, q]) => q > 0)
+                .map(([f, q]) => `${PDM_SHORT[f] ?? f.trim()}×${q}`)
+                .join(" ");
+              return (
+                <div key={box.id} className="flex justify-between text-sm gap-4">
+                  <span className="text-gray-700 shrink-0">{box.quantity}× Caixa {box.size}</span>
+                  <span className="text-gray-500 text-xs text-right">{flavorsStr}</span>
+                </div>
+              );
+            })}
+            {totalPdmInBoxes > 0 && (
+              <div className="flex justify-between text-sm font-semibold border-t border-gray-100 pt-1 mt-1">
+                <span className="text-gray-600">Total PDM nas caixas</span>
+                <span className="text-brand-brown">{totalPdmInBoxes}</span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Products summary */}
       {selectedProducts.length > 0 && (
         <div>
@@ -561,7 +813,7 @@ function StepRevisao({ draft, setDraft, submitError }: StepRevisaoProps) {
             ))}
             {pdmTotal > 0 && (
               <div className="flex justify-between text-sm font-semibold border-t border-gray-100 pt-1 mt-1">
-                <span className="text-gray-600">Total PDM</span>
+                <span className="text-gray-600">Total PDM avulso</span>
                 <span className="text-brand-brown">{pdmTotal}</span>
               </div>
             )}
@@ -678,11 +930,12 @@ export function NewOrderModal({ onClose, onCreated }: NewOrderModalProps) {
   }
 
   const totalItems = Object.values(draft.products).reduce((s, q) => s + q, 0);
+  const totalBoxItems = draft.boxes.reduce((s, b) => s + b.quantity, 0);
 
   function canProceed(): boolean {
     if (step === 1) return !!draft.atendente && !!draft.cliente.trim();
     if (step === 2) return !!draft.dataEntrega && !!draft.dataProducao && !!draft.entrega && !!draft.metodoPagamento;
-    if (step === 3) return totalItems > 0;
+    if (step === 3) return totalItems > 0 || totalBoxItems > 0;
     return true;
   }
 
@@ -691,6 +944,8 @@ export function NewOrderModal({ onClose, onCreated }: NewOrderModalProps) {
     setSubmitError(null);
     try {
       const horarioPrefix = draft.horario ? `Horário: ${draft.horario}\n` : "";
+      const caixasStr = buildCaixasStr(draft.boxes);
+      const caixasPrefix = caixasStr ? `${caixasStr}\n` : "";
       const res = await fetch("/api/create-order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -701,8 +956,8 @@ export function NewOrderModal({ onClose, onCreated }: NewOrderModalProps) {
             endereco: [draft.endereco, draft.numero, draft.complemento]
               .filter((s) => s.trim())
               .join(", "),
-            // Prepend horario to observacao
-            observacao: horarioPrefix + draft.observacao,
+            // Prepend horario + caixas composition to observacao
+            observacao: horarioPrefix + caixasPrefix + draft.observacao,
           },
         }),
       });
@@ -774,6 +1029,7 @@ export function NewOrderModal({ onClose, onCreated }: NewOrderModalProps) {
           {step === 3 && (
             <StepProdutos
               draft={draft}
+              setDraft={setDraft}
               activeTab={activeTab}
               setActiveTab={setActiveTab}
               setQty={setQty}

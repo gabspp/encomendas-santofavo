@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Clock } from "lucide-react";
 import type { ParsedOrder, ProductItem, OrderStatus } from "@/types";
-import { formatBrDateWithDay, extractHorario, stripHorario } from "@/utils/notion";
+import { formatBrDateWithDay, extractHorario, stripHorario, extractCaixasStr, stripCaixas } from "@/utils/notion";
 import { useAuth } from "@/contexts/AuthContext";
 
 // ── Status ───────────────────────────────────────────────────────────────────
@@ -273,11 +273,13 @@ function pdmFlavor(name: string): string {
 function categorizeProducts(products: ProductItem[]): {
   pdm: ShortItem[];
   bolos: ShortItem[];
+  caixas: ShortItem[];
   outros: ShortItem[];
   pdmTotal: number;
 } {
   const pdm: ShortItem[] = [];
   const bolos: ShortItem[] = [];
+  const caixas: ShortItem[] = [];
   const outros: ShortItem[] = [];
   let pdmTotal = 0;
 
@@ -294,6 +296,8 @@ function categorizeProducts(products: ProductItem[]): {
       // "Bolo PDM G" → "PDM G" | "Bolo de Mel Mini" → "Mel Mini"
       const short = name.replace(/^Bolo\s+(de\s+)?/i, "");
       bolos.push({ short, qty: item.qty });
+    } else if (name.startsWith("Caixa ")) {
+      caixas.push({ short: name, qty: item.qty });
     } else if (name.includes("PDM") && !name.includes("Ovo")) {
       pdm.push({ short: pdmFlavor(name), qty: item.qty });
     } else {
@@ -301,7 +305,7 @@ function categorizeProducts(products: ProductItem[]): {
     }
   }
 
-  return { pdm, bolos, outros, pdmTotal };
+  return { pdm, bolos, caixas, outros, pdmTotal };
 }
 
 // ── Component ────────────────────────────────────────────────────────────────
@@ -318,13 +322,28 @@ export function OrderCard({ order, onStatusChange, onEntregaChange, onDateChange
   const hasPascoa = order.products.some(
     (p) => (p.name.includes("Ovo") || p.name.includes("Barra")) && p.qty > 0
   );
-  const horario = extractHorario(order.observacao);
-  const obsText = stripHorario(order.observacao);
+  const caixasStr = extractCaixasStr(order.observacao);
+  const obsSansCaixas = stripCaixas(order.observacao);
+  const horario = extractHorario(obsSansCaixas);
+  const obsText = stripHorario(obsSansCaixas);
 
-  const { pdm, bolos, outros, pdmTotal } = categorizeProducts(order.products);
+  // Parse caixas composition string → display rows (new orders only)
+  const caixasDisplay = caixasStr
+    ? caixasStr.split("|").flatMap((part) => {
+        const m = part.match(/^(\d+)×(\d+)\(([^)]*)\)$/);
+        if (!m) return [];
+        const flavors = m[3].split(",").map((f) => {
+          const [name, n] = f.split(":");
+          return `${name}×${n}`;
+        });
+        return [{ qty: parseInt(m[1]), size: m[2], flavors }];
+      })
+    : null;
+
+  const { pdm, bolos, caixas, outros, pdmTotal } = categorizeProducts(order.products);
   const groups = [
-    { label: "PDM",   items: pdm },
-    { label: "Bolos", items: bolos },
+    { label: "PDM",    items: pdm },
+    { label: "Bolos",  items: bolos },
     { label: "Outros", items: outros },
   ].filter((g) => g.items.length > 0);
 
@@ -401,6 +420,33 @@ export function OrderCard({ order, onStatusChange, onEntregaChange, onDateChange
         <div className="border-t border-amber-100 bg-amber-50 px-4 py-1.5 flex items-center gap-1.5 text-xs text-amber-700">
           <Clock className="h-3 w-3 shrink-0" />
           <span className="font-semibold">{horario}</span>
+        </div>
+      )}
+
+      {/* ── Caixas ─────────────────────────────────────────────────────── */}
+      {caixas.length > 0 && (
+        <div className="border-t border-gray-100 px-4 py-3">
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
+            Caixas
+          </p>
+          {caixasDisplay ? (
+            <div className="text-xs space-y-1">
+              {caixasDisplay.map((box, i) => (
+                <p key={i} className="text-gray-700">
+                  <span className="font-medium">{box.qty}× Caixa {box.size}</span>
+                  <span className="text-gray-500"> · {box.flavors.join(" ")}</span>
+                </p>
+              ))}
+            </div>
+          ) : (
+            <div className="text-xs">
+              {caixas.map((c) => (
+                <p key={c.short} className="text-gray-700">
+                  {c.short}: <span className="font-medium">{c.qty}</span>
+                </p>
+              ))}
+            </div>
+          )}
         </div>
       )}
 

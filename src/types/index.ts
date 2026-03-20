@@ -22,6 +22,13 @@ export interface ParsedOrder {
   products: ProductItem[];
 }
 
+export interface BoxConfig {
+  id: string;            // uuid local para key React
+  size: 3 | 6 | 9 | 15;
+  flavors: Record<string, number>; // chave = nome exato do PDM field
+  quantity: number;      // quantas caixas idênticas
+}
+
 export interface NewOrderDraft {
   atendente: string;
   cliente: string;
@@ -38,6 +45,7 @@ export interface NewOrderDraft {
   taxaEntrega: string;   // string para input binding
   revenda: boolean;
   products: Record<string, number>; // chave = nome exato do campo no Notion
+  boxes: BoxConfig[];
   observacao: string;
 }
 
