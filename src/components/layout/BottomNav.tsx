@@ -8,6 +8,7 @@ import {
   Coffee,
   Egg,
   FlaskConical,
+  BarChart2,
   LogOut,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -16,6 +17,7 @@ const navItems = [
   { name: "Hoje",      href: "/",          icon: CalendarDays },
   { name: "Calendário",href: "/calendario", icon: Calendar },
   { name: "Planejar",  href: "/planejamento", icon: FlaskConical },
+  { name: "Estoque",   href: "/estoque",      icon: BarChart2 },
   { name: "Produção",  href: "/producao",   icon: ClipboardList },
   { name: "Entrega",   href: "/entrega",    icon: Truck },
   { name: "Bolos",     href: "/bolos",      icon: Cake },

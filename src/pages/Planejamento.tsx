@@ -10,6 +10,7 @@ import {
   parseTextToFlavors,
 } from "@/utils/producao";
 import type { FlavorId, FlavorData, OrderDetail } from "@/utils/producao";
+import { getPreviousBusinessDay } from "@/utils/estoque";
 
 // ── Constantes ────────────────────────────────────────────────────────────────
 
@@ -234,6 +235,23 @@ export default function Planejamento() {
 
   function resetAjustes() {
     setAjustes({});
+  }
+
+  async function handleBuscarSobras() {
+    const yesterday = getPreviousBusinessDay(date);
+    setLoadingData(true);
+    try {
+      const res = await fetch(`/api/planejamento-sobras?date=${yesterday}&storeId=${storeId}`);
+      const data = await res.json() as { sobras?: Record<FlavorId, number>; empty?: boolean; error?: string };
+      if (data.error) throw new Error(data.error);
+      setSobras({ ...BLANK_FLAVORS, ...data.sobras });
+      setAjustes({});
+      showToast(data.empty ? "Sem registro de estoque para esse dia" : "Sobras carregadas!");
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Erro ao buscar sobras", "err");
+    } finally {
+      setLoadingData(false);
+    }
   }
 
   async function handleBuscarNotion() {
@@ -469,9 +487,8 @@ export default function Planejamento() {
           </h2>
           <div className="flex items-center gap-2">
             <button
-              title="Em breve: integração com contagem de estoque"
-              disabled
-              className="flex items-center gap-1 text-xs text-gray-300 border border-gray-200 rounded-full px-2.5 py-1 cursor-not-allowed"
+              onClick={handleBuscarSobras}
+              className="flex items-center gap-1 text-xs text-gray-500 border border-gray-200 rounded-full px-2.5 py-1 hover:border-gray-400 hover:text-gray-700 transition-colors cursor-pointer"
             >
               <RefreshCw className="h-3 w-3" />
               Buscar Sobras
