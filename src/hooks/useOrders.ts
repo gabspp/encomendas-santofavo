@@ -99,10 +99,10 @@ export function useOrders() {
         orders.map((o) => (o.id === orderId ? { ...o, entrega: newEntrega } : o))
       );
       try {
-        const res = await fetch("/api/update-entrega", {
+        const res = await fetch("/api/update", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ pageId: orderId, entrega: newEntrega }),
+          body: JSON.stringify({ action: "entrega", pageId: orderId, entrega: newEntrega }),
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
       } catch (err) {
@@ -121,10 +121,10 @@ export function useOrders() {
         orders.map((o) => (o.id === orderId ? { ...o, status: newStatus } : o))
       );
       try {
-        const res = await fetch("/api/update-status", {
+        const res = await fetch("/api/update", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ pageId: orderId, status: newStatus }),
+          body: JSON.stringify({ action: "status", pageId: orderId, status: newStatus }),
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
       } catch (err) {
@@ -149,10 +149,10 @@ export function useOrders() {
         )
       );
       try {
-        const res = await fetch("/api/update-date", {
+        const res = await fetch("/api/update", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ pageId: orderId, field, date: newDate }),
+          body: JSON.stringify({ action: "date", pageId: orderId, field, date: newDate }),
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
       } catch (err) {
@@ -171,10 +171,10 @@ export function useOrders() {
         orders.map((o) => (o.id === orderId ? { ...o, revenda: newRevenda } : o))
       );
       try {
-        const res = await fetch("/api/update-revenda", {
+        const res = await fetch("/api/update", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ pageId: orderId, revenda: newRevenda }),
+          body: JSON.stringify({ action: "revenda", pageId: orderId, revenda: newRevenda }),
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
       } catch (err) {

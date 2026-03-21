@@ -58,7 +58,7 @@ export default function Estoque() {
   const loadData = useCallback(async (date: string, store: StoreId) => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/estoque-get?date=${date}&storeId=${store}`);
+      const res = await fetch(`/api/estoque?date=${date}&storeId=${store}`);
       const data = await res.json() as {
         empty?: boolean;
         headers?: string[];
@@ -157,7 +157,7 @@ export default function Estoque() {
   async function handleSave() {
     setSaving(true);
     try {
-      const res = await fetch("/api/estoque-save", {
+      const res = await fetch("/api/estoque", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ date: reportDate, storeId, headers, items, bars }),
@@ -181,7 +181,7 @@ export default function Estoque() {
     clearTimeout(autoSaveTimer.current);
     autoSaveTimer.current = setTimeout(async () => {
       try {
-        await fetch("/api/estoque-save", {
+        await fetch("/api/estoque", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ date: reportDate, storeId, headers, items, bars }),
