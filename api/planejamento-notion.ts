@@ -37,16 +37,12 @@ function parseRichText(prop: any): string {
   return prop?.rich_text?.[0]?.plain_text?.trim() ?? "";
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function parseSelect(prop: any): string {
-  return prop?.select?.name ?? "";
-}
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== "GET") return res.status(405).json({ error: "Method not allowed" });
 
-  const { date, storeId } = req.query;
-  if (!date || !storeId) return res.status(400).json({ error: "date e storeId obrigatórios" });
+  const { date } = req.query;
+  if (!date) return res.status(400).json({ error: "date obrigatório" });
 
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -77,10 +73,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const props = (page as any).properties;
 
-      // Filtrar por loja: campo "Entrega" deve conter o storeId (ex: "248")
-      const entregaVal = parseSelect(props["Entrega"]);
-      if (!entregaVal.includes(storeId as string)) continue;
-
+      // PDM é sempre produzido na loja 26 — sem filtro de loja
       const clientName = parseTitle(props["Cliente"]) || "Cliente";
       const observation = parseRichText(props["Observação!"]) || undefined;
 
