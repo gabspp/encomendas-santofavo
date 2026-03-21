@@ -118,6 +118,7 @@ export default function Planejamento() {
   // Loading states
   const [loadingData, setLoadingData] = useState(false);
   const [loadingNotion, setLoadingNotion] = useState(false);
+  const [loadingSobras, setLoadingSobras] = useState(false);
   const [copied, setCopied] = useState(false);
 
   // Toast simples
@@ -239,18 +240,19 @@ export default function Planejamento() {
 
   async function handleBuscarSobras() {
     const yesterday = getPreviousBusinessDay(date);
-    setLoadingData(true);
+    setLoadingSobras(true);
     try {
       const res = await fetch(`/api/planejamento-sobras?date=${yesterday}&storeId=${storeId}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json() as { sobras?: Record<FlavorId, number>; empty?: boolean; error?: string };
       if (data.error) throw new Error(data.error);
       setSobras({ ...BLANK_FLAVORS, ...data.sobras });
       setAjustes({});
-      showToast(data.empty ? "Sem registro de estoque para esse dia" : "Sobras carregadas!");
+      showToast(data.empty ? `Sem estoque registrado para ${yesterday}` : "Sobras carregadas!");
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Erro ao buscar sobras", "err");
     } finally {
-      setLoadingData(false);
+      setLoadingSobras(false);
     }
   }
 
@@ -488,9 +490,12 @@ export default function Planejamento() {
           <div className="flex items-center gap-2">
             <button
               onClick={handleBuscarSobras}
-              className="flex items-center gap-1 text-xs text-gray-500 border border-gray-200 rounded-full px-2.5 py-1 hover:border-gray-400 hover:text-gray-700 transition-colors cursor-pointer"
+              disabled={loadingSobras}
+              className="flex items-center gap-1 text-xs text-gray-500 border border-gray-200 rounded-full px-2.5 py-1 hover:border-gray-400 hover:text-gray-700 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <RefreshCw className="h-3 w-3" />
+              {loadingSobras
+                ? <Loader2 className="h-3 w-3 animate-spin" />
+                : <RefreshCw className="h-3 w-3" />}
               Buscar Sobras
             </button>
             <button
