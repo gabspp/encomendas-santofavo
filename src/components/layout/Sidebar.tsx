@@ -7,6 +7,7 @@ import {
   Cake,
   Coffee,
   Egg,
+  FlaskConical,
   LogOut,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -14,6 +15,7 @@ import { useAuth } from "@/contexts/AuthContext";
 const navItems = [
   { name: "Hoje e Próximos Dias", href: "/",          icon: CalendarDays },
   { name: "Calendário",           href: "/calendario", icon: Calendar },
+  { name: "Planejar PDM",         href: "/planejamento", icon: FlaskConical },
   { name: "Por Data de Produção", href: "/producao",   icon: ClipboardList },
   { name: "Por Data de Entrega",  href: "/entrega",    icon: Truck },
   { name: "Só Bolos",             href: "/bolos",      icon: Cake },

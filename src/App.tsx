@@ -8,6 +8,7 @@ import PorEntrega from "@/pages/PorEntrega";
 import SoBolos from "@/pages/SoBolos";
 import SoPdm from "@/pages/SoPdm";
 import SoPascoa from "@/pages/SoPascoa";
+import Planejamento from "@/pages/Planejamento";
 import Login from "@/pages/Login";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/layout/ProtectedRoute";
@@ -52,6 +53,7 @@ export default function App() {
           <Route path="/bolos" element={<SoBolos />} />
           <Route path="/pdm" element={<SoPdm />} />
           <Route path="/pascoa" element={<SoPascoa />} />
+          <Route path="/planejamento" element={<Planejamento />} />
           <Route path="*" element={<HojeAmanha />} />
         </Route>
       </Routes>
