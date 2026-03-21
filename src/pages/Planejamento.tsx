@@ -120,7 +120,7 @@ export default function Planejamento() {
 
   // Toast simples
   const [toast, setToast] = useState<{ msg: string; type: "ok" | "err" } | null>(null);
-  const toastTimer = useRef<ReturnType<typeof setTimeout>>();
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   function showToast(msg: string, type: "ok" | "err" = "ok") {
     setToast({ msg, type });
@@ -189,7 +189,7 @@ export default function Planejamento() {
 
   // ── Auto-save com debounce 1s ────────────────────────────────────────────────
 
-  const saveTimer = useRef<ReturnType<typeof setTimeout>>();
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   useEffect(() => {
     clearTimeout(saveTimer.current);
