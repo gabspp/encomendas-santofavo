@@ -55,7 +55,10 @@ export default function Estoque() {
 
   // ── Load ───────────────────────────────────────────────────────────────────
 
+  const skipAutoSave = useRef(true); // Evita auto-save durante carregamento de dados
+
   const loadData = useCallback(async (date: string, store: StoreId) => {
+    skipAutoSave.current = true; // Marcar: próximas mudanças de estado vêm de load, não do usuário
     setLoading(true);
     try {
       const res = await fetch(`/api/estoque?date=${date}&storeId=${store}`);
@@ -174,10 +177,9 @@ export default function Estoque() {
   // ── Auto-save debounce 2s ──────────────────────────────────────────────────
 
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  const isFirstLoad = useRef(true);
 
   useEffect(() => {
-    if (isFirstLoad.current) { isFirstLoad.current = false; return; }
+    if (skipAutoSave.current) { skipAutoSave.current = false; return; }
     clearTimeout(autoSaveTimer.current);
     autoSaveTimer.current = setTimeout(async () => {
       try {
