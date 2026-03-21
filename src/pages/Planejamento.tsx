@@ -577,7 +577,7 @@ export default function Planejamento() {
                     <td className="px-3 py-2">
                       <div className="flex items-center justify-center gap-1">
                         <button
-                          onClick={() => handleAjuste(sabor.id, Math.max(0, (ajustes[sabor.id] ?? 0) - 1))}
+                          onClick={() => handleAjuste(sabor.id, Math.max(0, row.ajuste - 1))}
                           className="w-6 h-6 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 flex items-center justify-center text-base leading-none cursor-pointer"
                         >
                           −
@@ -585,12 +585,12 @@ export default function Planejamento() {
                         <input
                           type="number"
                           min="0"
-                          value={ajustes[sabor.id] ?? 0}
+                          value={row.ajuste}
                           onChange={(e) => handleAjuste(sabor.id, parseInt(e.target.value, 10) || 0)}
                           className="w-12 text-center text-sm font-bold border-b border-gray-200 outline-none bg-transparent focus:border-brand-brown text-brand-brown"
                         />
                         <button
-                          onClick={() => handleAjuste(sabor.id, (ajustes[sabor.id] ?? 0) + 1)}
+                          onClick={() => handleAjuste(sabor.id, row.ajuste + 1)}
                           className="w-6 h-6 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 flex items-center justify-center text-base leading-none cursor-pointer"
                         >
                           +
