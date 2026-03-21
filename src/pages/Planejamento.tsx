@@ -3,6 +3,7 @@ import { Copy, Loader2, RefreshCw } from "lucide-react";
 import {
   SABORES,
   SABOR_RESTANTE,
+  SABORES_IDS,
   BLANK_FLAVORS,
   calcularProducao,
   gerarMensagem,
@@ -98,7 +99,7 @@ export default function Planejamento() {
   // Inputs
   const [sobras, setSobras] = useState<Record<FlavorId, number>>({ ...BLANK_FLAVORS });
   const [encomendas, setEncomendas] = useState<Record<FlavorId, number>>({ ...BLANK_FLAVORS });
-  const [ajustes, setAjustes] = useState<Record<FlavorId, number>>({ ...BLANK_FLAVORS });
+  const [ajustes, setAjustes] = useState<Partial<Record<FlavorId, number>>>({});
   const [dlsemToggle, setDlsemToggle] = useState(false);
   const [totalProducao, setTotalProducao] = useState(196);
 
@@ -148,7 +149,7 @@ export default function Planejamento() {
       if (data.empty) {
         setSobras({ ...BLANK_FLAVORS });
         setEncomendas({ ...BLANK_FLAVORS });
-        setAjustes({ ...BLANK_FLAVORS });
+        setAjustes({});
         setTotalProducao(196);
         setDlsemToggle(false);
         setOrderDetails([]);
@@ -156,7 +157,7 @@ export default function Planejamento() {
       } else {
         setSobras({ ...BLANK_FLAVORS, ...data.sobras });
         setEncomendas({ ...BLANK_FLAVORS, ...data.encomendas });
-        setAjustes({ ...BLANK_FLAVORS, ...data.ajustes });
+        setAjustes(data.ajustes ?? {});
         setTotalProducao(data.totalProducao ?? 196);
         setDlsemToggle(data.dlsemToggle ?? false);
         setOrderDetails(data.orderDetails ?? []);
@@ -180,12 +181,15 @@ export default function Planejamento() {
     setFlavorData(result);
   }, [sobras, encomendas, totalProducao, dlsemToggle, ajustes]);
 
-  // ── Gerar mensagem quando ajustes mudam ─────────────────────────────────────
+  // ── Gerar mensagem quando flavorData/context muda ───────────────────────────
 
   useEffect(() => {
-    const msg = gerarMensagem(ajustes, date, storeId, encomendas.DLSem, textoEncomendas);
+    const efetivos = Object.fromEntries(
+      SABORES_IDS.map((id) => [id, flavorData[id]?.ajuste ?? 0])
+    ) as Record<FlavorId, number>;
+    const msg = gerarMensagem(efetivos, date, storeId, encomendas.DLSem, textoEncomendas);
     setMensagem(msg);
-  }, [ajustes, date, storeId, encomendas.DLSem, textoEncomendas]);
+  }, [flavorData, date, storeId, encomendas.DLSem, textoEncomendas]);
 
   // ── Auto-save com debounce 1s ────────────────────────────────────────────────
 
@@ -199,7 +203,10 @@ export default function Planejamento() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            date, storeId, sobras, encomendas, ajustes,
+            date, storeId, sobras, encomendas,
+            ajustes: Object.fromEntries(
+              SABORES_IDS.map((id) => [id, flavorData[id]?.ajuste ?? 0])
+            ),
             totalProducao, dlsemToggle, orderDetails,
             formattedMessage: mensagem, textoEncomendas,
           }),
@@ -226,11 +233,7 @@ export default function Planejamento() {
   }
 
   function resetAjustes() {
-    const newAjustes = { ...BLANK_FLAVORS };
-    for (const s of SABORES) {
-      newAjustes[s.id] = flavorData[s.id]?.sugerido ?? 0;
-    }
-    setAjustes(newAjustes);
+    setAjustes({});
   }
 
   async function handleBuscarNotion() {
@@ -249,6 +252,7 @@ export default function Planejamento() {
       setOrderDetails(data.orderDetails ?? []);
       setTextoEncomendas(data.textoEncomendas ?? "");
       if ((data.encomendas?.DLSem ?? 0) > 0) setDlsemToggle(true);
+      setAjustes({}); // recalcular sugestões com as novas encomendas
       showToast("Encomendas carregadas do Notion!");
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Erro ao buscar do Notion", "err");
@@ -284,7 +288,7 @@ export default function Planejamento() {
   const totalSobras = Object.values(sobras).reduce((a, b) => a + b, 0);
   const totalEncomendas = Object.values(encomendas).reduce((a, b) => a + b, 0);
   const totalParaLoja = Math.max(0, totalProducao + totalSobras - totalEncomendas);
-  const totalAjustes = Object.values(ajustes).reduce((a, b) => a + b, 0);
+  const totalAjustes = SABORES_IDS.reduce((sum, id) => sum + (flavorData[id]?.ajuste ?? 0), 0);
   const totalFechado = totalAjustes === totalProducao;
 
   // ── Render ───────────────────────────────────────────────────────────────────

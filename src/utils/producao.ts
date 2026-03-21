@@ -67,7 +67,7 @@ export function calcularProducao(
   encomendas: Record<FlavorId, number>,
   totalProducao: number,
   dlsemToggle: boolean,
-  ajustesAtuais?: Record<FlavorId, number>,
+  ajustesAtuais?: Partial<Record<FlavorId, number>>,
 ): Record<FlavorId, FlavorData> {
   const totalSobras = SABORES_IDS.reduce((s, id) => s + (sobras[id] ?? 0), 0);
   const totalEncomendas = SABORES_IDS.reduce((s, id) => s + (encomendas[id] ?? 0), 0);
@@ -126,7 +126,7 @@ export function calcularProducao(
   // Passo 4: ajuste = ajuste manual se definido, senão usa sugerido
   for (const id of SABORES_IDS) {
     if (ajustesAtuais && id in ajustesAtuais) {
-      result[id].ajuste = ajustesAtuais[id];
+      result[id].ajuste = ajustesAtuais[id] ?? result[id].sugerido;
     } else {
       result[id].ajuste = result[id].sugerido;
     }
