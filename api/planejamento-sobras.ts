@@ -52,9 +52,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!flavorId) continue;
     // D3 = values[2] (coluna mais recente)
     const d3 = Number(item.values[2]) || 0;
-    sobras[flavorId] = d3;
+    if (d3 > 0) sobras[flavorId] = d3;
   }
 
+  // Se nenhum sabor tem sobra > 0, tratar como sem dados (registro fantasma ou tudo zerado)
+  const hasAnyData = Object.keys(sobras).length > 0;
+
   res.setHeader("Cache-Control", "no-store");
-  return res.json({ sobras, empty: false });
+  return res.json({ sobras, empty: !hasAnyData });
 }

@@ -246,9 +246,13 @@ export default function Planejamento() {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json() as { sobras?: Record<FlavorId, number>; empty?: boolean; error?: string };
       if (data.error) throw new Error(data.error);
-      setSobras({ ...BLANK_FLAVORS, ...data.sobras });
-      setAjustes({});
-      showToast(data.empty ? `Sem estoque registrado para ${yesterday}` : "Sobras carregadas!");
+      if (data.empty) {
+        showToast(`Sem estoque registrado para ${yesterday}`, "err");
+      } else {
+        setSobras({ ...BLANK_FLAVORS, ...data.sobras });
+        setAjustes({});
+        showToast("Sobras carregadas!");
+      }
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Erro ao buscar sobras", "err");
     } finally {
