@@ -10,7 +10,7 @@ const ENTREGA_OPTIONS = ["Entrega 26", "Retirada 26", "Entrega 248", "Retirada 2
 
 // Mapeamento de valor (Notion) → label de exibição
 const PAGAMENTO_LABELS: Record<string, string> = {
-  "Crédito": "Link de pagamento (Crédito antecipado)",
+  "Crédito": "Link de pagamento (Crédito)",
 };
 
 // Exact Notion column names (including spaces where they exist in Notion)
