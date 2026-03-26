@@ -8,6 +8,11 @@ import { formatBrDateWithDay, buildCaixasStr, PDM_FLAVOR_FIELDS, PDM_SHORT } fro
 const ATENDENTES = ["Raissa", "Gabriel", "Maria", "Thamiris", "Karla", "Elen", "Carol"];
 const ENTREGA_OPTIONS = ["Entrega 26", "Retirada 26", "Entrega 248", "Retirada 248"] as const;
 
+// Mapeamento de valor (Notion) → label de exibição
+const PAGAMENTO_LABELS: Record<string, string> = {
+  "Crédito": "Link de pagamento (Crédito antecipado)",
+};
+
 // Exact Notion column names (including spaces where they exist in Notion)
 const PDM_FIELDS = [
   "🟫 PDM DLN",
@@ -397,7 +402,7 @@ function StepPedido({ draft, setDraft, metodoOptions, onEntregaDateChange }: Ste
           <option value="">Selecione...</option>
           {metodoOptions.map((opt) => (
             <option key={opt} value={opt}>
-              {opt}
+              {PAGAMENTO_LABELS[opt] ?? opt}
             </option>
           ))}
         </select>
@@ -767,7 +772,7 @@ function StepRevisao({ draft, setDraft, submitError }: StepRevisaoProps) {
         <Row label="Data de produção" value={formatBrDateWithDay(draft.dataProducao)} />
         {draft.horario && <Row label="Horário" value={draft.horario} />}
         <Row label="Saída" value={draft.entrega} />
-        {draft.metodoPagamento && <Row label="Pagamento" value={draft.metodoPagamento} />}
+        {draft.metodoPagamento && <Row label="Pagamento" value={PAGAMENTO_LABELS[draft.metodoPagamento] ?? draft.metodoPagamento} />}
         {draft.taxaEntrega && parseFloat(draft.taxaEntrega) > 0 && (
           <Row label="Taxa entrega" value={`R$ ${draft.taxaEntrega}`} />
         )}
