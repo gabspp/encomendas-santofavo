@@ -353,9 +353,9 @@ export function OrderCard({ order, onStatusChange, onEntregaChange, onDateChange
       {/* ── Header ─────────────────────────────────────────────────────── */}
       <div className="flex items-start gap-3 p-4 pb-3">
 
-        {/* Ícone (emoji do Notion) */}
+        {/* Ícone (emoji do Notion, sobreposto por 🥚 se for pedido de Páscoa) */}
         <div className="w-11 h-11 rounded-full bg-gray-50 border border-gray-200 flex items-center justify-center text-xl shrink-0 select-none">
-          {order.icon || "🟢"}
+          {hasPascoa ? "🥚" : (order.icon || "🟢")}
         </div>
 
         {/* Nome + categoria */}
@@ -369,9 +369,9 @@ export function OrderCard({ order, onStatusChange, onEntregaChange, onDateChange
                 {category.label}
               </span>
             )}
-            {hasPascoa && order.icon !== "🐰" && (
+            {hasPascoa && (
               <span className="inline-block mt-1 text-xs font-medium px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-800">
-                🥚 Páscoa
+                Páscoa
               </span>
             )}
             {order.revenda && (
