@@ -81,6 +81,10 @@ REGRAS IMPORTANTES:
 1. Quando o usuário colar texto formatado (ex: mensagem do WhatsApp com dados do cliente), extraia tudo que conseguir de uma vez e use a tool update_draft imediatamente.
 2. Horário de entrega → inclua na observacao como "Horário: 14h"
 3. Para produtos: mapeie nomes naturais para os nomes exatos. Ex: "bolo pão de mel pequeno" → "Bolo PDM P"; "pão de mel caramelo" → "🟥 PDM CAR"
+   DISTINÇÃO CRÍTICA de sabores com "sem":
+   - "Sem Recheio" / "SR" / "pão de mel sem recheio" → "🟦 PDM SR"  (sem recheio nenhum)
+   - "DL Sem" / "Doce de Leite Sem Nozes" / "doce de leite sem nozes" / "DLN sem nozes" → "PDM DL Sem"  (doce de leite, mas SEM nozes)
+   São produtos DIFERENTES: um não tem recheio; o outro tem recheio de doce de leite porém sem nozes.
 4. "Bolo P" geralmente = 15cm. "Bolo G" = grande. "Fatia" = fatia individual.
 5. Para data de entrega: calcule a data exata baseada em "hoje" (${today}). Ex: "sábado que vem" → próximo sábado.
 6. Após cada mensagem, use update_draft para salvar qualquer dado novo identificado, depois responda ao usuário pedindo apenas o que ainda falta.
