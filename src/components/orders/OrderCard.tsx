@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
-import { Clock } from "lucide-react";
+import { Clock, Share2, Loader2 } from "lucide-react";
+import { toPng } from "html-to-image";
 import type { ParsedOrder, ProductItem, OrderStatus } from "@/types";
 import { formatBrDateWithDay, extractHorario, stripHorario, extractCaixasStr, stripCaixas } from "@/utils/notion";
 import { useAuth } from "@/contexts/AuthContext";
@@ -318,6 +319,35 @@ interface OrderCardProps {
 }
 
 export function OrderCard({ order, onStatusChange, onEntregaChange, onDateChange }: OrderCardProps) {
+  const shareRef = useRef<HTMLDivElement>(null);
+  const [sharing, setSharing] = useState(false);
+
+  async function handleShare() {
+    if (!shareRef.current || sharing) return;
+    setSharing(true);
+    try {
+      const dataUrl = await toPng(shareRef.current, {
+        backgroundColor: "#ffffff",
+        filter: (node) => !(node instanceof Element && node.hasAttribute("data-share-exclude")),
+      });
+      const blob = await fetch(dataUrl).then((r) => r.blob());
+      const fileName = `pedido-${order.cliente.replace(/\s+/g, "-")}-${order.dataEntrega}.png`;
+      const file = new File([blob], fileName, { type: "image/png" });
+      if (navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ files: [file], title: `Pedido: ${order.cliente}` });
+      } else {
+        const link = document.createElement("a");
+        link.href = dataUrl;
+        link.download = fileName;
+        link.click();
+      }
+    } catch {
+      // usuário cancelou ou erro silencioso
+    } finally {
+      setSharing(false);
+    }
+  }
+
   const category = CATEGORY_MAP[order.icon] ?? null;
   const hasPascoa = order.products.some(
     (p) => (p.name.includes("Ovo") || p.name.includes("Barra")) && p.qty > 0
@@ -348,7 +378,7 @@ export function OrderCard({ order, onStatusChange, onEntregaChange, onDateChange
   ].filter((g) => g.items.length > 0);
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden flex flex-col">
+    <div ref={shareRef} className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden flex flex-col">
 
       {/* ── Header ─────────────────────────────────────────────────────── */}
       <div className="flex items-start gap-3 p-4 pb-3">
@@ -394,6 +424,18 @@ export function OrderCard({ order, onStatusChange, onEntregaChange, onDateChange
             current={order.status}
             onStatusChange={onStatusChange}
           />
+          <div data-share-exclude>
+            <button
+              onClick={handleShare}
+              disabled={sharing}
+              title="Compartilhar pedido"
+              className="text-gray-300 hover:text-gray-500 transition-colors disabled:opacity-50 cursor-pointer"
+            >
+              {sharing
+                ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                : <Share2 className="h-3.5 w-3.5" />}
+            </button>
+          </div>
         </div>
       </div>
 
