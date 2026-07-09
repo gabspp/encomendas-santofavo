@@ -64,6 +64,47 @@ async function saveStoreConfig(req: VercelRequest, res: VercelResponse) {
   return res.json({ ok: true });
 }
 
+// ─── sobras-latest ─────────────────────────────────────────────────────────
+
+// Retorna a contagem de estoque MAIS RECENTE de uma loja (report_date <= date),
+// mapeada por sabor (sobra = soma das colunas + Dec). Cada loja é independente,
+// então lojas com contagem em datas diferentes são resolvidas corretamente.
+async function getSobrasLatest(req: VercelRequest, res: VercelResponse) {
+  const { date, storeId } = req.query as { date?: string; storeId?: string };
+  if (!date || !storeId) return res.status(400).json({ error: "date e storeId obrigatórios" });
+
+  const { data, error } = await supabase
+    .from("stock_records")
+    .select("report_date, items")
+    .eq("store_id", storeId)
+    .lte("report_date", date)
+    .order("report_date", { ascending: false })
+    .limit(1);
+
+  if (error) {
+    console.error("Supabase sobras-latest error:", error);
+    return res.status(500).json({ error: "Erro ao buscar sobras" });
+  }
+
+  res.setHeader("Cache-Control", "no-store");
+
+  if (!data || data.length === 0) {
+    return res.json({ empty: true, date: null, sobras: {} });
+  }
+
+  const row = data[0];
+  const items = (row.items ?? []) as StockItem[];
+  const sobras: Record<string, number> = {};
+  for (const item of items) {
+    const flavorId = STOCK_TO_FLAVOR[item.id];
+    if (!flavorId) continue;
+    const somaColunas = (item.values ?? []).reduce<number>((s, v) => s + (Number(v) || 0), 0);
+    sobras[flavorId] = somaColunas + (Number(item.dec) || 0);
+  }
+
+  return res.json({ empty: false, date: row.report_date, sobras });
+}
+
 // ─── historico-sobras ──────────────────────────────────────────────────────
 
 async function getHistoricoSobras(req: VercelRequest, res: VercelResponse) {
@@ -154,6 +195,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   if (req.method === "GET") {
     if (resource === "store-config") return getStoreConfig(res);
+    if (resource === "sobras-latest") return getSobrasLatest(req, res);
     if (resource === "historico-sobras") return getHistoricoSobras(req, res);
     if (resource === "historico-producao") return getHistoricoProducao(req, res);
     return res.status(400).json({ error: "resource inválido" });

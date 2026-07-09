@@ -7,13 +7,17 @@ import {
   TRAY_SIZE,
   sugerirTotalProducao,
   aplicarTransferencia,
-  sobrasFromEstoqueItems,
   parseTextToFlavors,
 } from "@/utils/producao";
 import type { FlavorId, FlavorData, OrderDetail, TransferenciaAjuste } from "@/utils/producao";
-import { getPreviousBusinessDay } from "@/utils/estoque";
-import type { StockItem, StoreId } from "@/utils/estoque";
+import type { StoreId } from "@/utils/estoque";
 import { usePlanejamentoLoja } from "@/hooks/usePlanejamentoLoja";
+
+interface SobrasLatestResponse {
+  empty?: boolean;
+  date?: string | null;
+  sobras?: Record<string, number>;
+}
 
 // ── Helpers de data ───────────────────────────────────────────────────────────
 
@@ -27,6 +31,10 @@ function tomorrowISO(): string {
   const d = new Date();
   d.setDate(d.getDate() + 1);
   return toISODate(d);
+}
+function fmtSobraDate(iso: string): string {
+  const [y, m, d] = iso.split("-");
+  return `${d}/${m}/${y}`;
 }
 
 // ── Estilos compartilhados ────────────────────────────────────────────────────
@@ -192,6 +200,9 @@ export default function PlanejamentoLojas() {
   const [sobraBase26, setSobraBase26] = useState<Record<FlavorId, number>>({ ...BLANK_FLAVORS });
   const [sobraBase248, setSobraBase248] = useState<Record<FlavorId, number>>({ ...BLANK_FLAVORS });
   const [transferencia, setTransferencia] = useState<TransferenciaAjuste>({});
+  // Data de origem de cada contagem trazida pela busca (só para exibição)
+  const [sobrasDate26, setSobrasDate26] = useState<string | null>(null);
+  const [sobrasDate248, setSobrasDate248] = useState<string | null>(null);
 
   // Encomendas (sempre loja 26)
   const [encomendas26, setEncomendas26] = useState<Record<FlavorId, number>>({ ...BLANK_FLAVORS });
@@ -274,6 +285,8 @@ export default function PlanejamentoLojas() {
 
   const loadData = useCallback(async (d: string) => {
     setLoadingData(true);
+    setSobrasDate26(null);
+    setSobrasDate248(null);
     try {
       const [res26, res248] = await Promise.all([
         fetch(`/api/planejamento-get?date=${d}&storeId=26`),
@@ -339,23 +352,27 @@ export default function PlanejamentoLojas() {
   // ── Buscar sobras (26 e 248) ─────────────────────────────────────────────────
 
   async function handleBuscarSobras() {
-    const dataAnterior = getPreviousBusinessDay(date);
     setLoadingSobras(true);
     try {
+      // Cada loja puxa sua contagem de estoque mais recente (report_date <= data
+      // do planejamento), independentemente — resolve o caso de as duas lojas
+      // terem a última contagem em datas diferentes.
       const [res26, res248] = await Promise.all([
-        fetch(`/api/estoque?date=${dataAnterior}&storeId=26`),
-        fetch(`/api/estoque?date=${dataAnterior}&storeId=248`),
+        fetch(`/api/planejamento-lojas?resource=sobras-latest&date=${date}&storeId=26`),
+        fetch(`/api/planejamento-lojas?resource=sobras-latest&date=${date}&storeId=248`),
       ]);
-      const data26 = (await res26.json()) as { empty?: boolean; items?: StockItem[] };
-      const data248 = (await res248.json()) as { empty?: boolean; items?: StockItem[] };
+      const data26 = (await res26.json()) as SobrasLatestResponse;
+      const data248 = (await res248.json()) as SobrasLatestResponse;
 
       if (data26.empty && data248.empty) {
-        showToast(`Sem estoque registrado para ${dataAnterior}`, "err");
+        showToast("Nenhuma contagem de estoque encontrada", "err");
         return;
       }
 
-      setSobraBase26(sobrasFromEstoqueItems(data26.items ?? []));
-      setSobraBase248(sobrasFromEstoqueItems(data248.items ?? []));
+      setSobraBase26({ ...BLANK_FLAVORS, ...data26.sobras });
+      setSobraBase248({ ...BLANK_FLAVORS, ...data248.sobras });
+      setSobrasDate26(data26.date ?? null);
+      setSobrasDate248(data248.date ?? null);
       setTransferencia({});
       loja26.setAjustes({});
       loja248.setAjustes({});
@@ -664,7 +681,10 @@ export default function PlanejamentoLojas() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           <div>
-            <p className={labelCls}>Sobra base — Loja 26</p>
+            <p className={labelCls}>
+              Sobra base — Loja 26
+              {sobrasDate26 && <span className="ml-1 normal-case font-normal text-gray-400">(contagem de {fmtSobraDate(sobrasDate26)})</span>}
+            </p>
             <div className="divide-y divide-gray-50">
               {SABORES.filter((s) => s.id !== "DLSem").map((sabor) => (
                 <FlavorRow key={sabor.id} sabor={sabor} value={sobraBase26[sabor.id]} onChange={(v) => handleSobra26(sabor.id, v)} />
@@ -672,7 +692,10 @@ export default function PlanejamentoLojas() {
             </div>
           </div>
           <div>
-            <p className={labelCls}>Sobra base — Loja 248</p>
+            <p className={labelCls}>
+              Sobra base — Loja 248
+              {sobrasDate248 && <span className="ml-1 normal-case font-normal text-gray-400">(contagem de {fmtSobraDate(sobrasDate248)})</span>}
+            </p>
             <div className="divide-y divide-gray-50">
               {SABORES.filter((s) => s.id !== "DLSem").map((sabor) => (
                 <FlavorRow key={sabor.id} sabor={sabor} value={sobraBase248[sabor.id]} onChange={(v) => handleSobra248(sabor.id, v)} />
