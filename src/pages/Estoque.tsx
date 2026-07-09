@@ -8,9 +8,9 @@ import {
   generateReportText,
   getInitialHeaders,
   formatDateForInput,
+  formatDateDisplay,
 } from "@/utils/estoque";
 import type { StockItem, BarItem, StoreId } from "@/utils/estoque";
-import { toPng } from "html-to-image";
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -43,7 +43,6 @@ export default function Estoque() {
 
   const [toast, setToast] = useState<{ msg: string; type: "ok" | "err" } | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  const tableRef = useRef<HTMLDivElement>(null);
 
   // ── Toast ──────────────────────────────────────────────────────────────────
 
@@ -209,13 +208,120 @@ export default function Estoque() {
     setTimeout(() => setCopiedReport(false), 2000);
   }
 
-  // ── Compartilhar (html-to-image + Web Share) ───────────────────────────────
+  // ── Compartilhar (imagem desenhada em <canvas> — determinístico) ────────────
+
+  // Desenha o relatório (título, tabela com datas, total e barrinhas) direto num
+  // canvas 2D. Sem clonagem de DOM/fontes → sem imagem em branco no mobile/Safari.
+  function buildReportCanvas(): HTMLCanvasElement {
+    const SCALE = 2;
+    const PAD = 20;
+    const cols = [
+      { label: "Sabor", w: 96, align: "left" as const },
+      { label: formatDateDisplay(headers[0] ?? ""), w: 82, align: "center" as const },
+      { label: formatDateDisplay(headers[1] ?? ""), w: 82, align: "center" as const },
+      { label: formatDateDisplay(headers[2] ?? ""), w: 82, align: "center" as const },
+      { label: "Dec", w: 54, align: "center" as const },
+      { label: "Total", w: 64, align: "center" as const },
+    ];
+    const tableW = cols.reduce((s, c) => s + c.w, 0);
+    const W = PAD * 2 + tableW;
+
+    const titleH = 24, subH = 22, gapTitle = 12, headerH = 32, rowH = 30, totalH = 32;
+    const gapBars = 18, barsTitleH = 24, barRowH = 26;
+    const tableTop = PAD + titleH + subH + gapTitle;
+    const bodyTop = tableTop + headerH;
+    const tableBottom = bodyTop + items.length * rowH + totalH;
+    const barsTop = tableBottom + gapBars;
+    const H = barsTop + barsTitleH + bars.length * barRowH + PAD;
+
+    const canvas = document.createElement("canvas");
+    canvas.width = W * SCALE;
+    canvas.height = H * SCALE;
+    const ctx = canvas.getContext("2d")!;
+    ctx.scale(SCALE, SCALE);
+    ctx.textBaseline = "middle";
+
+    // Fundo
+    ctx.fillStyle = "#faf7f2";
+    ctx.fillRect(0, 0, W, H);
+
+    // Título + data
+    ctx.textAlign = "left";
+    ctx.fillStyle = "#5b3a29";
+    ctx.font = "700 17px Arial, sans-serif";
+    ctx.fillText(`Estoque PDM  -  Loja ${storeId}`, PAD, PAD + titleH / 2);
+    ctx.fillStyle = "#6b7280";
+    ctx.font = "13px Arial, sans-serif";
+    ctx.fillText(reportDate ? reportDate.split("-").reverse().join("/") : "", PAD, PAD + titleH + subH / 2);
+
+    // Posição x de cada coluna
+    const colX: number[] = [];
+    let x = PAD;
+    for (const c of cols) { colX.push(x); x += c.w; }
+
+    const cell = (text: string, ci: number, y: number, h: number, o?: { bold?: boolean; color?: string }) => {
+      const c = cols[ci];
+      ctx.fillStyle = o?.color ?? "#374151";
+      ctx.font = `${o?.bold ? "700 " : ""}13px Arial, sans-serif`;
+      ctx.textAlign = c.align === "left" ? "left" : "center";
+      ctx.fillText(text, c.align === "left" ? colX[ci] + 10 : colX[ci] + c.w / 2, y + h / 2);
+    };
+    const hline = (y: number) => {
+      ctx.strokeStyle = "#e5e0d8"; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(PAD, y); ctx.lineTo(PAD + tableW, y); ctx.stroke();
+    };
+
+    // Cabeçalho
+    ctx.fillStyle = "#5b3a29";
+    ctx.fillRect(PAD, tableTop, tableW, headerH);
+    cols.forEach((c, ci) => cell(c.label, ci, tableTop, headerH, { bold: true, color: "#ffffff" }));
+
+    // Linhas
+    items.forEach((item, ri) => {
+      const y = bodyTop + ri * rowH;
+      cell(item.name, 0, y, rowH, { bold: true, color: "#5b3a29" });
+      [0, 1, 2].forEach((k) => cell(String(Number(item.values[k]) || 0), k + 1, y, rowH, { color: "#4b5563" }));
+      cell(String(Number(item.dec) || 0), 4, y, rowH, { color: "#ea580c" });
+      cell(String(item.total), 5, y, rowH, { bold: true, color: "#5b3a29" });
+      hline(y + rowH);
+    });
+
+    // Total
+    const ty = bodyTop + items.length * rowH;
+    ctx.fillStyle = "#f0e9e3";
+    ctx.fillRect(PAD, ty, tableW, totalH);
+    cell("TOTAL", 0, ty, totalH, { bold: true, color: "#374151" });
+    [0, 1, 2].forEach((k) =>
+      cell(String(items.reduce((s, it) => s + (Number(it.values[k]) || 0), 0)), k + 1, ty, totalH, { bold: true, color: "#374151" }),
+    );
+    cell(String(items.reduce((s, it) => s + (Number(it.dec) || 0), 0)), 4, ty, totalH, { bold: true, color: "#ea580c" });
+    cell(String(calculateGrandTotal(items)), 5, ty, totalH, { bold: true, color: "#5b3a29" });
+
+    // Barrinhas
+    ctx.textAlign = "left";
+    ctx.fillStyle = "#374151";
+    ctx.font = "700 13px Arial, sans-serif";
+    ctx.fillText("Estoque de Barrinhas", PAD, barsTop + barsTitleH / 2);
+    bars.forEach((bar, bi) => {
+      const y = barsTop + barsTitleH + bi * barRowH;
+      ctx.textAlign = "left";
+      ctx.fillStyle = "#374151";
+      ctx.font = "13px Arial, sans-serif";
+      ctx.fillText(bar.name, PAD, y + barRowH / 2);
+      ctx.textAlign = "right";
+      ctx.font = "700 13px Arial, sans-serif";
+      ctx.fillText(String(Number(bar.quantity) || 0), PAD + tableW, y + barRowH / 2);
+      hline(y + barRowH);
+    });
+
+    return canvas;
+  }
 
   async function handleShare() {
-    if (!tableRef.current) return;
     try {
-      const dataUrl = await toPng(tableRef.current, { backgroundColor: "#faf7f2" });
-      const blob = await fetch(dataUrl).then((r) => r.blob());
+      const canvas = buildReportCanvas();
+      const blob: Blob | null = await new Promise((res) => canvas.toBlob(res, "image/png"));
+      if (!blob) throw new Error("no blob");
       const file = new File([blob], `estoque-${storeId}-${reportDate}.png`, { type: "image/png" });
 
       if (navigator.canShare?.({ files: [file] })) {
@@ -223,7 +329,7 @@ export default function Estoque() {
       } else {
         // Fallback: download
         const link = document.createElement("a");
-        link.href = dataUrl;
+        link.href = canvas.toDataURL("image/png");
         link.download = file.name;
         link.click();
       }
@@ -294,7 +400,7 @@ export default function Estoque() {
       </div>
 
       {/* ── Tabela de estoque ────────────────────────────────────────────────── */}
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden" ref={tableRef}>
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>

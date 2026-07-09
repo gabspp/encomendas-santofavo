@@ -740,37 +740,51 @@ export default function PlanejamentoLojas() {
         <h2 className="text-sm font-bold text-gray-800 uppercase tracking-wide mb-3">Quantidade a Produzir</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {([
-            { id: "26" as StoreId, hook: loja26, sugestao: sugestao26 },
-            { id: "248" as StoreId, hook: loja248, sugestao: sugestao248 },
-          ]).map(({ id, hook, sugestao }) => (
-            <div key={id}>
-              <div className="flex items-center justify-between mb-1.5">
-                <p className={labelCls + " mb-0"}>Loja {id}</p>
-                <button
-                  onClick={() => hook.setTotalProducao(sugestao)}
-                  className="text-xs bg-amber-50 text-brand-brown border border-amber-200 rounded-full px-2.5 py-1 hover:bg-amber-100 cursor-pointer transition-colors"
-                >
-                  Sugerido: {sugestao} — usar
-                </button>
+            { id: "26" as StoreId, hook: loja26, sugestao: sugestao26, sobras: totalSobras26, encomendas: totalEncomendas26 },
+            { id: "248" as StoreId, hook: loja248, sugestao: sugestao248, sobras: totalSobras248, encomendas: 0 },
+          ]).map(({ id, hook, sugestao, sobras, encomendas }) => {
+            const paraLoja = Math.max(0, sobras + hook.totalProducao - encomendas);
+            return (
+              <div key={id}>
+                <div className="flex items-center justify-between mb-1.5">
+                  <p className={labelCls + " mb-0"}>Loja {id}</p>
+                  <button
+                    onClick={() => hook.setTotalProducao(sugestao)}
+                    className="text-xs bg-amber-50 text-brand-brown border border-amber-200 rounded-full px-2.5 py-1 hover:bg-amber-100 cursor-pointer transition-colors"
+                  >
+                    Sugerido: {sugestao} — usar
+                  </button>
+                </div>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="range"
+                    min={0} max={980} step={TRAY_SIZE}
+                    value={hook.totalProducao}
+                    onChange={(e) => hook.setTotalProducao(parseInt(e.target.value, 10))}
+                    className="flex-1 accent-brand-brown"
+                  />
+                  <input
+                    type="number"
+                    min="0"
+                    value={hook.totalProducao}
+                    onChange={(e) => hook.setTotalProducao(parseInt(e.target.value, 10) || 0)}
+                    className="w-20 text-center text-lg font-bold border border-gray-200 rounded-lg py-1 outline-none focus:border-brand-brown"
+                  />
+                </div>
+                <div className="flex flex-wrap gap-2 mt-2.5 text-xs text-gray-500">
+                  <span className="bg-gray-100 rounded-full px-2.5 py-1">
+                    Sobras: <strong className="text-gray-700">{sobras}</strong>
+                  </span>
+                  <span className="bg-gray-100 rounded-full px-2.5 py-1">
+                    Encomendas: <strong className="text-gray-700">{encomendas}</strong>
+                  </span>
+                  <span className="bg-gray-100 rounded-full px-2.5 py-1">
+                    Para loja: <strong className="text-gray-700">{paraLoja}</strong>
+                  </span>
+                </div>
               </div>
-              <div className="flex items-center gap-3">
-                <input
-                  type="range"
-                  min={0} max={980} step={TRAY_SIZE}
-                  value={hook.totalProducao}
-                  onChange={(e) => hook.setTotalProducao(parseInt(e.target.value, 10))}
-                  className="flex-1 accent-brand-brown"
-                />
-                <input
-                  type="number"
-                  min="0"
-                  value={hook.totalProducao}
-                  onChange={(e) => hook.setTotalProducao(parseInt(e.target.value, 10) || 0)}
-                  className="w-20 text-center text-lg font-bold border border-gray-200 rounded-lg py-1 outline-none focus:border-brand-brown"
-                />
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
