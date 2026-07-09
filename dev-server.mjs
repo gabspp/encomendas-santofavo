@@ -160,7 +160,7 @@ async function handleOrders(res) {
     "Cache-Control": "no-store",
     "Access-Control-Allow-Origin": "*",
   });
-  res.end(JSON.stringify({ today, tomorrow, orders }));
+  res.end(JSON.stringify({ today, tomorrow, dates: [today, tomorrow], orders }));
 }
 
 const server = createServer(async (req, res) => {

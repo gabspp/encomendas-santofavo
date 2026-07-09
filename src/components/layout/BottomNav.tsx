@@ -13,19 +13,21 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
+// Agrupado em Encomendas + Planejamento de Produção (mesma ordem do Sidebar),
+// com uma divisória visual entre os dois grupos.
 const navItems = [
   { name: "Hoje",      href: "/",          icon: CalendarDays },
   { name: "Calendário",href: "/calendario", icon: Calendar },
-  { name: "Planejar",  href: "/planejamento", icon: FlaskConical },
-  { name: "2 Lojas",   href: "/planejamento-lojas", icon: FlaskConical },
-  { name: "Estoque",   href: "/estoque",      icon: BarChart2 },
-  { name: "Hist. Sobras",   href: "/historico-sobras",   icon: BarChart2 },
-  { name: "Hist. Produção", href: "/historico-producao", icon: ClipboardList },
   { name: "Produção",  href: "/producao",   icon: ClipboardList },
   { name: "Entrega",   href: "/entrega",    icon: Truck },
   { name: "Bolos",     href: "/bolos",      icon: Cake },
   { name: "PDM",       href: "/pdm",        icon: Coffee },
   { name: "Páscoa",    href: "/pascoa",     icon: Egg },
+  { name: "Planejar",  href: "/planejamento", icon: FlaskConical, groupStart: true },
+  { name: "2 Lojas",   href: "/planejamento-lojas", icon: FlaskConical },
+  { name: "Estoque",   href: "/estoque",      icon: BarChart2 },
+  { name: "Hist. Sobras",   href: "/historico-sobras",   icon: BarChart2 },
+  { name: "Hist. Produção", href: "/historico-producao", icon: ClipboardList },
 ];
 
 export function BottomNav() {
@@ -42,6 +44,8 @@ export function BottomNav() {
             key={item.href}
             to={item.href}
             className={`flex-1 min-w-[64px] flex flex-col items-center justify-center py-2 gap-0.5 text-[10px] font-medium transition-colors ${
+              item.groupStart ? "border-l border-white/10" : ""
+            } ${
               isActive
                 ? "text-brand-yellow"
                 : "text-white/60 hover:text-white"

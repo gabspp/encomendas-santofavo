@@ -295,8 +295,8 @@ export function aplicarTransferencia(
 
 /**
  * Extrai as sobras por sabor a partir dos `items` retornados por /api/estoque
- * para uma loja/data — usa a coluna D3 (values[2]), a mesma convenção já
- * usada em api/planejamento-sobras.ts para "sobra do dia".
+ * para uma loja/data. Sobra = soma das 3 colunas de data + Dec (= item.total),
+ * recalculado aqui para não depender de um total possivelmente defasado.
  */
 export function sobrasFromEstoqueItems(items: StockItem[]): Record<FlavorId, number> {
   const sobras = { ...BLANK_FLAVORS };
@@ -304,7 +304,8 @@ export function sobrasFromEstoqueItems(items: StockItem[]): Record<FlavorId, num
   for (const item of items) {
     const flavorId = STOCK_TO_FLAVOR_MAP[item.id] as FlavorId | undefined;
     if (!flavorId) continue;
-    sobras[flavorId] = Number(item.values[2]) || 0;
+    const somaColunas = (item.values ?? []).reduce<number>((s, v) => s + (Number(v) || 0), 0);
+    sobras[flavorId] = somaColunas + (Number(item.dec) || 0);
   }
 
   return sobras;

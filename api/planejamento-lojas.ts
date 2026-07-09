@@ -18,6 +18,7 @@ const FLAVOR_IDS = ["Dln", "Car", "Mar", "Caju", "SR", "DLSem", "Lar", "Mes"];
 interface StockItem {
   id: string;
   values: (number | string)[];
+  dec?: number | string;
 }
 
 interface HistoricoRow {
@@ -91,7 +92,10 @@ async function getHistoricoSobras(req: VercelRequest, res: VercelResponse) {
     for (const item of items) {
       const flavorId = STOCK_TO_FLAVOR[item.id];
       if (!flavorId) continue;
-      const sobra = Number(item.values?.[2]) || 0;
+      // Sobra = soma das 3 colunas de data + Dec (= item.total), recalculado
+      // aqui para não depender de um total possivelmente defasado.
+      const somaColunas = (item.values ?? []).reduce<number>((s, v) => s + (Number(v) || 0), 0);
+      const sobra = somaColunas + (Number(item.dec) || 0);
       values[flavorId] = sobra;
       total += sobra;
     }

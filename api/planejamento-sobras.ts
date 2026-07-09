@@ -20,6 +20,7 @@ const STOCK_TO_FLAVOR: Record<string, string> = {
 interface StockItem {
   id: string;
   values: (number | string)[];
+  dec?: number | string;
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -50,9 +51,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     for (const item of items) {
       const flavorId = STOCK_TO_FLAVOR[item.id];
       if (!flavorId) continue;
-      // D3 = values[2] (coluna mais recente)
-      const d3 = Number(item.values[2]) || 0;
-      if (d3 > 0) sobras[flavorId] = (sobras[flavorId] ?? 0) + d3;
+      // Sobra = soma das 3 colunas de data + Dec (= item.total), somada entre lojas
+      const somaColunas = (item.values ?? []).reduce<number>((s, v) => s + (Number(v) || 0), 0);
+      const total = somaColunas + (Number(item.dec) || 0);
+      if (total > 0) sobras[flavorId] = (sobras[flavorId] ?? 0) + total;
     }
   }
 

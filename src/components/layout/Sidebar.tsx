@@ -13,19 +13,29 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
-const navItems = [
-  { name: "Hoje e Próximos Dias", href: "/",          icon: CalendarDays },
-  { name: "Calendário",           href: "/calendario", icon: Calendar },
-  { name: "Planejar PDM",         href: "/planejamento", icon: FlaskConical },
-  { name: "Planejar (2 Lojas)",   href: "/planejamento-lojas", icon: FlaskConical },
-  { name: "Estoque PDM",          href: "/estoque",      icon: BarChart2 },
-  { name: "Histórico Sobras",     href: "/historico-sobras",   icon: BarChart2 },
-  { name: "Histórico Produção",   href: "/historico-producao", icon: ClipboardList },
-  { name: "Por Data de Produção", href: "/producao",   icon: ClipboardList },
-  { name: "Por Data de Entrega",  href: "/entrega",    icon: Truck },
-  { name: "Só Bolos",             href: "/bolos",      icon: Cake },
-  { name: "Só Pães de Mel",       href: "/pdm",        icon: Coffee },
-  { name: "Páscoa",               href: "/pascoa",     icon: Egg },
+const navGroups = [
+  {
+    label: "Encomendas",
+    items: [
+      { name: "Hoje e Próximos Dias", href: "/",          icon: CalendarDays },
+      { name: "Calendário",           href: "/calendario", icon: Calendar },
+      { name: "Por Data de Produção", href: "/producao",   icon: ClipboardList },
+      { name: "Por Data de Entrega",  href: "/entrega",    icon: Truck },
+      { name: "Só Bolos",             href: "/bolos",      icon: Cake },
+      { name: "Só Pães de Mel",       href: "/pdm",        icon: Coffee },
+      { name: "Páscoa",               href: "/pascoa",     icon: Egg },
+    ],
+  },
+  {
+    label: "Planejamento de Produção",
+    items: [
+      { name: "Planejar PDM",         href: "/planejamento",       icon: FlaskConical },
+      { name: "Planejar (2 Lojas)",   href: "/planejamento-lojas", icon: FlaskConical },
+      { name: "Estoque PDM",          href: "/estoque",            icon: BarChart2 },
+      { name: "Histórico Sobras",     href: "/historico-sobras",   icon: BarChart2 },
+      { name: "Histórico Produção",   href: "/historico-producao", icon: ClipboardList },
+    ],
+  },
 ];
 
 export function Sidebar() {
@@ -43,26 +53,35 @@ export function Sidebar() {
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 px-2 py-4 space-y-0.5 overflow-y-auto">
-        {navItems.map((item) => {
-          const isActive = location.pathname === item.href;
-          const Icon = item.icon;
+      <nav className="flex-1 px-2 py-4 overflow-y-auto">
+        {navGroups.map((group) => (
+          <div key={group.label} className="mb-4 last:mb-0">
+            <p className="px-3 mb-1 text-[10px] font-semibold text-white/40 uppercase tracking-widest">
+              {group.label}
+            </p>
+            <div className="space-y-0.5">
+              {group.items.map((item) => {
+                const isActive = location.pathname === item.href;
+                const Icon = item.icon;
 
-          return (
-            <Link
-              key={item.href}
-              to={item.href}
-              className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors ${
-                isActive
-                  ? "bg-brand-yellow text-brand-brown font-semibold"
-                  : "text-white/80 hover:bg-white/10 hover:text-white"
-              }`}
-            >
-              <Icon className="h-4 w-4 shrink-0" />
-              <span>{item.name}</span>
-            </Link>
-          );
-        })}
+                return (
+                  <Link
+                    key={item.href}
+                    to={item.href}
+                    className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors ${
+                      isActive
+                        ? "bg-brand-yellow text-brand-brown font-semibold"
+                        : "text-white/80 hover:bg-white/10 hover:text-white"
+                    }`}
+                  >
+                    <Icon className="h-4 w-4 shrink-0" />
+                    <span>{item.name}</span>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        ))}
       </nav>
 
       {/* Footer */}
