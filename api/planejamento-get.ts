@@ -49,5 +49,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     dlsemToggle: data.dlsem_toggle,
     orderDetails: data.order_details ?? [],
     textoEncomendas: data.texto_encomendas ?? "",
+    transferenciaAjuste: data.transferencia_ajuste ?? {},
   });
 }

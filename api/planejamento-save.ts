@@ -14,6 +14,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     sobras = {}, encomendas = {}, ajustes = {},
     totalProducao = 196, dlsemToggle = false,
     orderDetails = [], formattedMessage = "", textoEncomendas = "",
+    transferenciaAjuste,
   } = req.body ?? {};
 
   if (!date || !storeId) return res.status(400).json({ error: "date e storeId obrigatórios" });
@@ -43,6 +44,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     formatted_message: formattedMessage,
     texto_encomendas: textoEncomendas,
     updated_at: new Date().toISOString(),
+
+    // Só inclui a coluna quando o chamador realmente enviar o campo — caso
+    // contrário o upsert preserva o valor já salvo (evita que o auto-save da
+    // página de 1 loja apague a transferência salva pela página de 2 lojas).
+    ...(transferenciaAjuste !== undefined ? { transferencia_ajuste: transferenciaAjuste } : {}),
   };
 
   const { error } = await supabase

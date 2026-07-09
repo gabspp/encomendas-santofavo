@@ -9,6 +9,9 @@ import SoBolos from "@/pages/SoBolos";
 import SoPdm from "@/pages/SoPdm";
 import SoPascoa from "@/pages/SoPascoa";
 import Planejamento from "@/pages/Planejamento";
+import PlanejamentoLojas from "@/pages/PlanejamentoLojas";
+import HistoricoSobras from "@/pages/HistoricoSobras";
+import HistoricoProducao from "@/pages/HistoricoProducao";
 import Estoque from "@/pages/Estoque";
 import Login from "@/pages/Login";
 import { AuthProvider } from "@/contexts/AuthContext";
@@ -55,7 +58,10 @@ export default function App() {
           <Route path="/pdm" element={<SoPdm />} />
           <Route path="/pascoa" element={<SoPascoa />} />
           <Route path="/planejamento" element={<Planejamento />} />
+          <Route path="/planejamento-lojas" element={<PlanejamentoLojas />} />
           <Route path="/estoque" element={<Estoque />} />
+          <Route path="/historico-sobras" element={<HistoricoSobras />} />
+          <Route path="/historico-producao" element={<HistoricoProducao />} />
           <Route path="*" element={<HojeAmanha />} />
         </Route>
       </Routes>

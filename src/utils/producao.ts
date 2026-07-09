@@ -1,3 +1,6 @@
+import type { StockItem } from "./estoque";
+import { STOCK_TO_FLAVOR_MAP } from "./estoque";
+
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 
 export type FlavorId = "Dln" | "Car" | "Mar" | "Caju" | "SR" | "DLSem" | "Lar" | "Mes";
@@ -15,6 +18,10 @@ export interface OrderDetail {
   flavors: Record<string, number>;
   observation?: string;
 }
+
+// Delta por sabor causado pela transferência 26→248 num dia
+// (negativo na linha da loja 26, positivo na linha da 248)
+export type TransferenciaAjuste = Partial<Record<FlavorId, number>>;
 
 // ─── Constantes de sabores ────────────────────────────────────────────────────
 
@@ -235,4 +242,70 @@ export function parseTextToFlavors(text: string): Record<FlavorId, number> {
   }
 
   return totais;
+}
+
+// ─── Planejamento de 2 lojas ──────────────────────────────────────────────────
+
+// Quantidade de pães de mel em uma assadeira — o total a produzir sempre
+// é arredondado para o múltiplo de bandeja mais próximo.
+export const TRAY_SIZE = 49;
+
+/**
+ * Sugere o total a produzir para uma loja a partir da venda média diária.
+ * Ideal de estoque = venda média diária × 2 dias. O necessário é esse ideal
+ * menos a sobra atual, mais as encomendas do dia (que nunca reduzem o total),
+ * arredondado para CIMA ao múltiplo de bandeja (49) mais próximo.
+ *
+ * Ex.: venda=100, sobra=45, encomendas=120 → ideal=200, necessário=275 → 294.
+ */
+export function sugerirTotalProducao(
+  vendaMediaDiaria: number,
+  sobraTotal: number,
+  encomendasTotal: number,
+): number {
+  const idealEstoque = vendaMediaDiaria * 2;
+  const necessario = Math.max(0, idealEstoque - sobraTotal + encomendasTotal);
+  return Math.ceil(necessario / TRAY_SIZE) * TRAY_SIZE;
+}
+
+/**
+ * Aplica a transferência de pães da loja 26 para a loja 248 sobre as sobras
+ * brutas de cada loja, sabor a sabor. A quantidade transferida de cada sabor
+ * é limitada ao que existe disponível na loja 26 (nunca fica negativa).
+ */
+export function aplicarTransferencia(
+  sobras26: Record<FlavorId, number>,
+  sobras248: Record<FlavorId, number>,
+  transferencia: TransferenciaAjuste,
+): { sobras26: Record<FlavorId, number>; sobras248: Record<FlavorId, number> } {
+  const resultado26 = { ...BLANK_FLAVORS };
+  const resultado248 = { ...BLANK_FLAVORS };
+
+  for (const id of SABORES_IDS) {
+    const disponivel = sobras26[id] ?? 0;
+    const pedido = transferencia[id] ?? 0;
+    const transferido = Math.min(Math.max(0, pedido), disponivel);
+
+    resultado26[id] = disponivel - transferido;
+    resultado248[id] = (sobras248[id] ?? 0) + transferido;
+  }
+
+  return { sobras26: resultado26, sobras248: resultado248 };
+}
+
+/**
+ * Extrai as sobras por sabor a partir dos `items` retornados por /api/estoque
+ * para uma loja/data — usa a coluna D3 (values[2]), a mesma convenção já
+ * usada em api/planejamento-sobras.ts para "sobra do dia".
+ */
+export function sobrasFromEstoqueItems(items: StockItem[]): Record<FlavorId, number> {
+  const sobras = { ...BLANK_FLAVORS };
+
+  for (const item of items) {
+    const flavorId = STOCK_TO_FLAVOR_MAP[item.id] as FlavorId | undefined;
+    if (!flavorId) continue;
+    sobras[flavorId] = Number(item.values[2]) || 0;
+  }
+
+  return sobras;
 }
