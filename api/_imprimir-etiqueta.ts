@@ -14,9 +14,9 @@ const supabase = createClient(
 // Única impressora de etiquetas fica na loja 26
 const LOJA_IMPRESSORA = "26";
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
-  if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
-
+// Não é rota própria (prefixo "_"): é chamada por api/update.ts com
+// action "etiqueta", porque o plano Hobby da Vercel limita a 12 funções.
+export async function imprimirEtiqueta(req: VercelRequest, res: VercelResponse) {
   const token = (req.headers.authorization ?? "").replace(/^Bearer\s+/i, "");
   const { data: auth, error: authError } = token
     ? await supabase.auth.getUser(token)

@@ -1,5 +1,6 @@
 import { Client } from "@notionhq/client";
 import type { VercelRequest, VercelResponse } from "@vercel/node";
+import { imprimirEtiqueta } from "./_imprimir-etiqueta.js";
 
 const notion = new Client({ auth: process.env.NOTION_TOKEN });
 
@@ -24,6 +25,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   };
 
   const { action, pageId } = body;
+  if (action === "etiqueta") return imprimirEtiqueta(req, res);
   if (!pageId) return res.status(400).json({ error: "pageId is required" });
 
   try {

@@ -577,8 +577,8 @@ REGRAS IMPORTANTES:
     return;
   }
 
-  // Mesma lógica de api/imprimir-etiqueta.ts
-  if (url.pathname === "/api/imprimir-etiqueta" && req.method === "POST") {
+  // Mesma lógica de api/_imprimir-etiqueta.ts (via /api/update, action "etiqueta")
+  if (url.pathname === "/api/update" && req.method === "POST") {
     const json = (status, obj) => {
       res.writeHead(status, { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" });
       res.end(JSON.stringify(obj));
@@ -590,6 +590,7 @@ REGRAS IMPORTANTES:
         req.on("end", () => { try { resolve(JSON.parse(data)); } catch (e) { reject(e); } });
         req.on("error", reject);
       });
+      if (body.action !== "etiqueta") return json(400, { error: "Ação não suportada no dev-server" });
       const token = (req.headers.authorization ?? "").replace(/^Bearer\s+/i, "");
       const { data: auth, error: authError } = token
         ? await supabaseAdmin.auth.getUser(token)
