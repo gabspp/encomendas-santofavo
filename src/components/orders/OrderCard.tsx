@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect } from "react";
-import { Clock, Share2, Loader2 } from "lucide-react";
+import { Clock, Share2, Loader2, Printer, Check } from "lucide-react";
 import { toPng } from "html-to-image";
+import { supabase } from "@/lib/supabase";
+import { gerarZplPedido } from "@/lib/zpl/etiqueta-pedido";
 import type { ParsedOrder, ProductItem, OrderStatus } from "@/types";
 import { formatBrDateWithDay, extractHorario, stripHorario, extractCaixasStr, stripCaixas } from "@/utils/notion";
 import { useAuth } from "@/contexts/AuthContext";
@@ -355,6 +357,31 @@ export function OrderCard({ order, onStatusChange, onEntregaChange, onDateChange
     }
   }
 
+  const [printState, setPrintState] = useState<"idle" | "sending" | "sent" | "error">("idle");
+
+  async function handlePrint() {
+    if (printState === "sending") return;
+    setPrintState("sending");
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch("/api/imprimir-etiqueta", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session?.access_token ?? ""}`,
+        },
+        body: JSON.stringify({ zpl: gerarZplPedido(order) }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      setPrintState("sent");
+    } catch (err) {
+      console.error("Erro ao enviar etiqueta:", err);
+      setPrintState("error");
+    } finally {
+      setTimeout(() => setPrintState("idle"), 2500);
+    }
+  }
+
   const category = CATEGORY_MAP[order.icon] ?? null;
   const hasPascoa = order.products.some(
     (p) => (p.name.includes("Ovo") || p.name.includes("Barra")) && p.qty > 0
@@ -431,7 +458,25 @@ export function OrderCard({ order, onStatusChange, onEntregaChange, onDateChange
             current={order.status}
             onStatusChange={onStatusChange}
           />
-          <div data-share-exclude>
+          <div data-share-exclude className="flex items-center gap-2.5">
+            <button
+              onClick={handlePrint}
+              disabled={printState === "sending"}
+              title={
+                printState === "sent" ? "Etiqueta enviada para a impressora"
+                : printState === "error" ? "Erro ao enviar etiqueta"
+                : "Imprimir etiqueta"
+              }
+              className={`transition-colors disabled:opacity-50 cursor-pointer ${
+                printState === "sent" ? "text-green-600"
+                : printState === "error" ? "text-red-500"
+                : "text-gray-300 hover:text-gray-500"
+              }`}
+            >
+              {printState === "sending" ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                : printState === "sent" ? <Check className="h-3.5 w-3.5" />
+                : <Printer className="h-3.5 w-3.5" />}
+            </button>
             <button
               onClick={handleShare}
               disabled={sharing}

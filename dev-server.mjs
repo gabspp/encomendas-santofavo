@@ -7,8 +7,13 @@
 
 import { createServer } from "node:http";
 import { Client } from "@notionhq/client";
+import { createClient } from "@supabase/supabase-js";
 
 const notion = new Client({ auth: process.env.NOTION_TOKEN });
+const supabaseAdmin = createClient(
+  process.env.VITE_SUPABASE_URL ?? "",
+  process.env.SUPABASE_SERVICE_ROLE_KEY ?? "",
+);
 const DB_ID = process.env.NOTION_DB_ID ?? "";
 const PORT = 3000;
 
@@ -568,6 +573,47 @@ REGRAS IMPORTANTES:
       console.error("Update date error:", err);
       res.writeHead(500, { "Content-Type": "application/json" });
       res.end(JSON.stringify({ error: err.message }));
+    }
+    return;
+  }
+
+  // Mesma lógica de api/imprimir-etiqueta.ts
+  if (url.pathname === "/api/imprimir-etiqueta" && req.method === "POST") {
+    const json = (status, obj) => {
+      res.writeHead(status, { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" });
+      res.end(JSON.stringify(obj));
+    };
+    try {
+      const body = await new Promise((resolve, reject) => {
+        let data = "";
+        req.on("data", (chunk) => (data += chunk));
+        req.on("end", () => { try { resolve(JSON.parse(data)); } catch (e) { reject(e); } });
+        req.on("error", reject);
+      });
+      const token = (req.headers.authorization ?? "").replace(/^Bearer\s+/i, "");
+      const { data: auth, error: authError } = token
+        ? await supabaseAdmin.auth.getUser(token)
+        : { data: { user: null }, error: null };
+      if (authError || !auth.user) return json(401, { error: "Não autenticado" });
+
+      const { zpl } = body;
+      if (typeof zpl !== "string" || !zpl.startsWith("^XA") || zpl.length > 8000) {
+        return json(400, { error: "ZPL inválido" });
+      }
+      const { data: loja, error: lojaError } = await supabaseAdmin
+        .from("stores").select("id").eq("code", "26").single();
+      if (lojaError || !loja) return json(500, { error: "Loja da impressora não encontrada" });
+
+      const { data, error } = await supabaseAdmin
+        .from("fila_impressao")
+        .insert({ loja_id: loja.id, etiqueta_id: null, zpl })
+        .select("id")
+        .single();
+      if (error) return json(500, { error: error.message });
+      json(200, { id: data.id });
+    } catch (err) {
+      console.error("Imprimir etiqueta error:", err);
+      json(500, { error: err.message });
     }
     return;
   }
