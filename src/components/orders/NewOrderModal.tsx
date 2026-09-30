@@ -5,7 +5,7 @@ import { formatBrDateWithDay, buildCaixasStr, PDM_FLAVOR_FIELDS, PDM_SHORT } fro
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const ATENDENTES = ["Raissa", "Gabriel", "Maria", "Thamiris", "Karla", "Elen", "Carol"];
+const ATENDENTES = ["Raissa", "Gabriel", "Maria", "Karla", "Elen", "Yasmim", "Nicole", "Elisa", "Natalia"];
 const ENTREGA_OPTIONS = ["Entrega 26", "Retirada 26", "Entrega 248", "Retirada 248"] as const;
 
 // Mapeamento de valor (Notion) → label de exibição

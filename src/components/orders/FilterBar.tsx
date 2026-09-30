@@ -1,6 +1,6 @@
 import type { FilterState } from "@/types";
 
-const ATENDENTES = ["Raissa", "Gabriel", "Maria", "Thamiris", "Karla", "Elen", "Carol"];
+const ATENDENTES = ["Raissa", "Gabriel", "Maria", "Karla", "Elen", "Yasmim", "Nicole", "Elisa", "Natalia"];
 
 interface FilterBarProps {
   filters: FilterState;

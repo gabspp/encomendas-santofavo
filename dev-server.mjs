@@ -374,7 +374,7 @@ const server = createServer(async (req, res) => {
         return;
       }
 
-      const ATENDENTES = ["Raissa", "Gabriel", "Maria", "Thamiris", "Karla", "Elen", "Carol"];
+      const ATENDENTES = ["Raissa", "Gabriel", "Maria", "Karla", "Elen", "Yasmim", "Nicole", "Elisa", "Natalia"];
       const ENTREGA_OPTIONS = ["Entrega 26", "Retirada 26", "Entrega 248", "Retirada 248"];
       const PRODUCT_FIELDS = [
         "🟫 PDM DLN", "🟥 PDM CAR", "🟨 PDM MAR", "⬛️ PDM CAJU", "🟦 PDM SR",

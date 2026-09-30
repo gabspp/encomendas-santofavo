@@ -5,7 +5,7 @@ const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 // ── Constantes do domínio ─────────────────────────────────────────────────────
 
-const ATENDENTES = ["Raissa", "Gabriel", "Maria", "Thamiris", "Karla", "Elen", "Carol"];
+const ATENDENTES = ["Raissa", "Gabriel", "Maria", "Karla", "Elen", "Yasmim", "Nicole", "Elisa", "Natalia"];
 const ENTREGA_OPTIONS = ["Entrega 26", "Retirada 26", "Entrega 248", "Retirada 248"];
 
 // Todos os campos de produto (nomes exatos do Notion)

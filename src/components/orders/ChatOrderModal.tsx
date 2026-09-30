@@ -33,7 +33,7 @@ interface ChatOrderModalProps {
 
 // ── Domain constants ───────────────────────────────────────────────────────────
 
-const ATENDENTES = ["Raissa", "Gabriel", "Maria", "Thamiris", "Karla", "Elen", "Carol"];
+const ATENDENTES = ["Raissa", "Gabriel", "Maria", "Karla", "Elen", "Yasmim", "Nicole", "Elisa", "Natalia"];
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
