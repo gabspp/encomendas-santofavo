@@ -246,6 +246,24 @@ const CATEGORY_MAP: Record<string, CategoryDef> = {
   "✡️": { label: "Rosh Hashaná", className: "bg-amber-100 text-amber-700" },
 };
 
+// Cor do selo "Bolo" pelo tipo — evita confundir bolo PDM com Choco
+const BOLO_PDM_CLASS = "bg-yellow-300 text-yellow-900";
+const BOLO_CHOCO_CLASS = "bg-[#6b3f22] text-white";
+
+function boloBadges(products: ProductItem[]): CategoryDef[] | null {
+  const hasPdm = products.some((p) => p.name.startsWith("Bolo PDM") && p.qty > 0);
+  const hasChoco = products.some((p) => p.name.startsWith("Bolo Choco") && p.qty > 0);
+  if (hasPdm && hasChoco) {
+    return [
+      { label: "Bolo PDM", className: BOLO_PDM_CLASS },
+      { label: "Bolo Choco", className: BOLO_CHOCO_CLASS },
+    ];
+  }
+  if (hasPdm) return [{ label: "Bolo", className: BOLO_PDM_CLASS }];
+  if (hasChoco) return [{ label: "Bolo", className: BOLO_CHOCO_CLASS }];
+  return null;
+}
+
 
 // ── Produtos: agrupamento e abreviação ───────────────────────────────────────
 
@@ -348,7 +366,10 @@ export function OrderCard({ order, onStatusChange, onEntregaChange, onDateChange
     }
   }
 
-  const category = CATEGORY_MAP[order.icon] ?? null;
+  const baseCategory = CATEGORY_MAP[order.icon] ?? null;
+  const categories: CategoryDef[] = baseCategory
+    ? (order.icon === "🎂" && boloBadges(order.products)) || [baseCategory]
+    : [];
   const hasPascoa = order.products.some(
     (p) => (p.name.includes("Ovo") || p.name.includes("Barra")) && p.qty > 0
   );
@@ -394,11 +415,11 @@ export function OrderCard({ order, onStatusChange, onEntregaChange, onDateChange
             {order.cliente || "—"}
           </h3>
           <div className="flex flex-wrap gap-1">
-            {category && (
-              <span className={`inline-block mt-1 text-xs font-medium px-2 py-0.5 rounded-full ${category.className}`}>
+            {categories.map((category) => (
+              <span key={category.label} className={`inline-block mt-1 text-xs font-medium px-2 py-0.5 rounded-full ${category.className}`}>
                 {category.label}
               </span>
-            )}
+            ))}
             {hasPascoa && (
               <span className="inline-block mt-1 text-xs font-medium px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-800">
                 Páscoa
