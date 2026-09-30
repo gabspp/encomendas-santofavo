@@ -1,7 +1,15 @@
 // Etiqueta de pedido em ZPL para a Zebra ZD220 da loja 26.
 // Base copiada de etiquetas-santofavo (web/src/lib/zpl/gerar-zpl.ts): mesma
-// resolução, mesma calibragem de largura de caractere e mesma quebra manual.
-// O ZPL vai para a tabela fila_impressao e o agente do PC da loja imprime.
+// resolução e mesma quebra manual de linhas. O ZPL vai para a tabela
+// fila_impressao e o agente do PC da loja imprime.
+//
+// Layout:
+//   Nome do cliente (grande)
+//   [ENTREGA 26]  03/10 - 11:00        ← selo invertido (branco no preto)
+//   Endereço (até 3 linhas)
+//   Telefone
+//   ───────────────
+//   1 x Bolo PDM G …
 
 import type { ParsedOrder } from "@/types";
 import { extractHorario, stripCaixas } from "@/utils/notion";
@@ -17,10 +25,11 @@ export type FormatoPedido = {
   ll: number;
   margem: number;
   topo: number;
-  /** Fonte da linha do cliente. */
-  fonteTitulo: number;
-  /** Fonte das demais linhas. */
-  fonte: number;
+  fonteNome: number;
+  /** Selo "ENTREGA 26" e data/horário ao lado. */
+  fonteSelo: number;
+  fonteDados: number;
+  fonteProdutos: number;
   espacoLinhas: number;
 };
 
@@ -28,10 +37,12 @@ export const FORMATO_PEDIDO_50x30: FormatoPedido = {
   nome: "50x30",
   pw: 50 * DOTS_POR_MM, // 400
   ll: 30 * DOTS_POR_MM, // 240
-  margem: 12,
-  topo: 8,
-  fonteTitulo: 22,
-  fonte: 20,
+  margem: 20,
+  topo: 12,
+  fonteNome: 30,
+  fonteSelo: 20,
+  fonteDados: 19,
+  fonteProdutos: 21,
   espacoLinhas: 2,
 };
 
@@ -39,10 +50,12 @@ export const FORMATO_PEDIDO_60x40: FormatoPedido = {
   nome: "60x40",
   pw: 60 * DOTS_POR_MM, // 480
   ll: 40 * DOTS_POR_MM, // 320
-  margem: 14,
-  topo: 10,
-  fonteTitulo: 28,
-  fonte: 22,
+  margem: 22,
+  topo: 14,
+  fonteNome: 36,
+  fonteSelo: 24,
+  fonteDados: 22,
+  fonteProdutos: 25,
   espacoLinhas: 3,
 };
 
@@ -50,13 +63,38 @@ export const FORMATO_PEDIDO_60x40: FormatoPedido = {
 export const FORMATO_PEDIDO: FormatoPedido = FORMATO_PEDIDO_50x30;
 
 /**
- * Largura média de caractere como fração do corpo da fonte ^A0 — calibrada
- * em impressão real no projeto de etiquetas (0,47–0,56).
+ * Largura estimada de um caractere da fonte ^A0, como fração do corpo.
+ * Medido na impressão real da ZD220 (etiqueta de 30/09/2026): minúsculas
+ * ≈ 0,39, dígitos ≈ 0,5; maiúsculas vêm da calibragem do projeto de
+ * etiquetas (até 0,56). Valores com folga para nunca estourar a linha.
  */
-const LARGURA_CARACTERE = 0.55;
+function larguraCaractere(ch: string): number {
+  if (ch === " ") return 0.3;
+  if (/[0-9]/.test(ch)) return 0.5;
+  if (/[MWÆŒ]/.test(ch)) return 0.7;
+  if (/[A-ZÀ-Ý]/.test(ch)) return 0.56;
+  if (/[mw]/.test(ch)) return 0.62;
+  if (/[a-zà-ÿ]/.test(ch)) return 0.45;
+  return 0.4; // pontuação, hífen etc.
+}
+
+/** Largura estimada do texto em dots. */
+function larguraTexto(texto: string, fonte: number): number {
+  let soma = 0;
+  for (const ch of texto) soma += larguraCaractere(ch);
+  return soma * fonte;
+}
 
 /** A fonte da impressora não tem o glifo "…". */
 const RETICENCIAS = "...";
+
+/** Corta o texto (com reticências) até caber na largura. */
+function truncar(texto: string, fonte: number, largura: number): string {
+  if (larguraTexto(texto, fonte) <= largura) return texto;
+  let t = texto;
+  while (t && larguraTexto(t + RETICENCIAS, fonte) > largura) t = t.slice(0, -1);
+  return t.trimEnd() + RETICENCIAS;
+}
 
 /**
  * Quebra o texto nas linhas que cabem na largura, truncando com reticências
@@ -64,8 +102,7 @@ const RETICENCIAS = "...";
  * sobrepõe o excesso na última linha (vira um borrão preto).
  */
 export function quebrarTexto(texto: string, fonte: number, largura: number, maxLinhas: number): string[] {
-  const maxChars = Math.max(1, Math.floor(largura / (fonte * LARGURA_CARACTERE)));
-
+  const cabe = (t: string) => larguraTexto(t, fonte) <= largura;
   const linhas: string[] = [];
   let atual = "";
   const fechar = () => {
@@ -74,15 +111,20 @@ export function quebrarTexto(texto: string, fonte: number, largura: number, maxL
   };
 
   for (const palavra of texto.split(/\s+/).filter(Boolean)) {
-    if (palavra.length > maxChars) {
+    if (!cabe(palavra)) {
+      // Palavra que não cabe nem sozinha: parte em pedaços duros
       fechar();
-      for (let i = 0; i < palavra.length; i += maxChars) {
-        linhas.push(palavra.slice(i, i + maxChars));
+      let resto = palavra;
+      while (resto) {
+        let n = resto.length;
+        while (n > 1 && !cabe(resto.slice(0, n))) n--;
+        linhas.push(resto.slice(0, n));
+        resto = resto.slice(n);
       }
       continue;
     }
     const tentativa = atual ? `${atual} ${palavra}` : palavra;
-    if (tentativa.length <= maxChars) atual = tentativa;
+    if (cabe(tentativa)) atual = tentativa;
     else {
       fechar();
       atual = palavra;
@@ -93,11 +135,7 @@ export function quebrarTexto(texto: string, fonte: number, largura: number, maxL
   if (linhas.length <= maxLinhas) return linhas;
 
   const mantidas = linhas.slice(0, maxLinhas);
-  const ultima = mantidas[maxLinhas - 1];
-  mantidas[maxLinhas - 1] =
-    ultima.length + RETICENCIAS.length <= maxChars
-      ? ultima + RETICENCIAS
-      : ultima.slice(0, Math.max(0, maxChars - RETICENCIAS.length)).trimEnd() + RETICENCIAS;
+  mantidas[maxLinhas - 1] = truncar(mantidas[maxLinhas - 1] + " " + linhas[maxLinhas], fonte, largura);
   return mantidas;
 }
 
@@ -124,68 +162,78 @@ export function linhasProdutos(order: ParsedOrder): string[] {
     .map((p) => `${p.qty} x ${zplEscape(p.name)}`);
 }
 
-/** Linhas de texto da etiqueta, antes de posicionar — exportado para conferência. */
-export function conteudoEtiqueta(order: ParsedOrder) {
-  const horario = extractHorario(stripCaixas(order.observacao));
-  const data = diaMes(order.dataEntrega);
-  const isRetirada = order.entrega.startsWith("Retirada");
-
-  return {
-    dataHora: [data, horario].filter(Boolean).join(" - "),
-    endereco: isRetirada ? "" : order.endereco,
-    telefone: order.telefone,
-    produtos: linhasProdutos(order),
-  };
+/** Nome que cabe: inteiro → primeiro + último ("Maria Gonçalves") → truncado. */
+function nomeQueCabe(cliente: string, fonte: number, largura: number): string {
+  const completo = zplEscape(cliente || "—");
+  const palavras = completo.split(" ");
+  const candidatos = [
+    completo,
+    palavras.length > 2 ? `${palavras[0]} ${palavras[palavras.length - 1]}` : "",
+  ].filter(Boolean);
+  return candidatos.find((t) => larguraTexto(t, fonte) <= largura) ?? truncar(completo, fonte, largura);
 }
 
 export function gerarZplPedido(order: ParsedOrder, formato: FormatoPedido = FORMATO_PEDIDO): string {
-  const { pw, ll, margem, topo, fonteTitulo, fonte, espacoLinhas } = formato;
+  const { pw, ll, margem, topo, fonteNome, fonteSelo, fonteDados, fonteProdutos, espacoLinhas } = formato;
   const largura = pw - margem * 2;
-  const c = conteudoEtiqueta(order);
 
   const saida: string[] = ["^XA", "^SZ2", `^PW${pw}`, `^LL${ll}`, "^CI28"];
   let y = topo;
 
-  const linha = (texto: string, corpo: number) => {
+  const texto = (x: number, yy: number, corpo: number, t: string, larguraCampo: number, inverso = false) =>
     saida.push(
-      `^FO${margem},${y}^A0N,${corpo},${corpo}^FB${largura},1,0,L,0^FD${texto}^FS`
+      `^FO${x},${yy}^A0N,${corpo},${corpo}^FB${larguraCampo},1,0,L,0${inverso ? "^FR" : ""}^FD${t}^FS`
     );
+  const linha = (t: string, corpo: number) => {
+    texto(margem, y, corpo, t, largura);
     y += corpo + espacoLinhas;
   };
 
-  // Só o nome é truncado — "Entrega 26" / "Retirada 248" precisa sempre aparecer
-  const sufixo = order.entrega ? ` - ${zplEscape(order.entrega)}` : "";
-  const larguraNome = largura - sufixo.length * fonteTitulo * LARGURA_CARACTERE;
-  // Nome longo: tenta inteiro → primeiro + último ("Maria Gonçalves") → só o primeiro
-  const nomeCompleto = zplEscape(order.cliente || "—");
-  const palavras = nomeCompleto.split(" ");
-  const candidatos = [
-    nomeCompleto,
-    palavras.length > 2 ? `${palavras[0]} ${palavras[palavras.length - 1]}` : "",
-    palavras[0],
-  ].filter(Boolean);
-  const cabe = (t: string) => quebrarTexto(t, fonteTitulo, larguraNome, 1)[0] === t;
-  const [nome = "—"] = quebrarTexto(candidatos.find(cabe) ?? nomeCompleto, fonteTitulo, larguraNome, 1);
-  linha(nome + sufixo, fonteTitulo);
-  if (c.dataHora) linha(zplEscape(c.dataHora), fonte);
-  for (const t of quebrarTexto(zplEscape(c.endereco), fonte, largura, 3)) linha(t, fonte);
-  if (c.telefone) for (const t of quebrarTexto(zplEscape(c.telefone), fonte, largura, 1)) linha(t, fonte);
+  // ── Nome ──
+  linha(nomeQueCabe(order.cliente, fonteNome, largura), fonteNome);
+  y += 4;
 
-  // Divisor entre dados do cliente e produtos
-  y += 1;
-  saida.push(`^FO${margem},${y}^GB${largura},2,2,B,0^FS`);
-  y += 5;
-
-  const passo = fonte + espacoLinhas;
-  const cabem = Math.max(0, Math.floor((ll - y + espacoLinhas) / passo));
-  const produtos = c.produtos;
-  const mostrar = produtos.length > cabem ? Math.max(0, cabem - 1) : produtos.length;
-  for (const p of produtos.slice(0, mostrar)) {
-    for (const t of quebrarTexto(p, fonte, largura, 1)) linha(t, fonte);
+  // ── Selo invertido "ENTREGA 26" + data/horário ──
+  const selo = zplEscape(order.entrega).toUpperCase();
+  const horario = extractHorario(stripCaixas(order.observacao));
+  const dataHora = [diaMes(order.dataEntrega), horario].filter(Boolean).join(" - ");
+  const padX = 8;
+  const padY = 4;
+  const alturaSelo = fonteSelo + padY * 2;
+  if (selo) {
+    // Folga extra: com ^FR, texto que passa da caixa sai invertido no branco
+    const larguraSelo = Math.ceil(larguraTexto(selo, fonteSelo) * 1.15) + padX * 2;
+    saida.push(`^FO${margem},${y}^GB${larguraSelo},${alturaSelo},${alturaSelo},B,0^FS`);
+    texto(margem + padX, y + padY + 1, fonteSelo, selo, larguraSelo - padX, true);
+    if (dataHora) {
+      const x = margem + larguraSelo + 10;
+      texto(x, y + padY + 1, fonteSelo, truncar(dataHora, fonteSelo, pw - margem - x), pw - margem - x);
+    }
+    y += alturaSelo + 6;
+  } else if (dataHora) {
+    linha(dataHora, fonteSelo);
   }
+
+  // ── Endereço (não em retirada) e telefone ──
+  const isRetirada = order.entrega.startsWith("Retirada");
+  if (!isRetirada) {
+    for (const t of quebrarTexto(zplEscape(order.endereco), fonteDados, largura, 3)) linha(t, fonteDados);
+  }
+  if (order.telefone) linha(truncar(zplEscape(order.telefone), fonteDados, largura), fonteDados);
+
+  // ── Produtos ──
+  y += 2;
+  saida.push(`^FO${margem},${y}^GB${largura},2,2,B,0^FS`);
+  y += 6;
+
+  const passo = fonteProdutos + espacoLinhas;
+  const cabem = Math.max(0, Math.floor((ll - 4 - y + espacoLinhas) / passo));
+  const produtos = linhasProdutos(order);
+  const mostrar = produtos.length > cabem ? Math.max(0, cabem - 1) : produtos.length;
+  for (const p of produtos.slice(0, mostrar)) linha(truncar(p, fonteProdutos, largura), fonteProdutos);
   if (produtos.length > mostrar && cabem > 0) {
     const resto = produtos.length - mostrar;
-    linha(`+${resto} ${resto === 1 ? "item" : "itens"}`, fonte);
+    linha(`+${resto} ${resto === 1 ? "item" : "itens"}`, fonteProdutos);
   }
 
   saida.push("^PQ1", "^XZ");
