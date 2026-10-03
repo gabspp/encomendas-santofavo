@@ -31,8 +31,19 @@ export const INITIAL_ITEMS: StockItem[] = [
 export const INITIAL_BARS: BarItem[] = [
   { id: 'bar-amendoim', name: 'Bar. Amendoim', quantity: 0 },
   { id: 'bar-fudge',    name: 'Bar. Fudge',    quantity: 0 },
-  { id: 'bar-especial', name: 'Bar. Especial',  quantity: 0 },
+  // id antigo mantido: "Bar. Especial" foi renomeada para "Bar. Queijo"
+  { id: 'bar-especial', name: 'Bar. Queijo',   quantity: 0 },
+  { id: 'bar-avela',    name: 'Bar. Avelã',    quantity: 0 },
+  { id: 'bar-recheada-caramelo', name: 'Bar. Recheada Caramelo', quantity: 0 },
 ];
+
+// Registros salvos antes de uma mudança na lista trazem nomes/itens antigos:
+// usa a lista atual e aproveita só as quantidades salvas (por id).
+export const mergeBars = (saved: BarItem[] | undefined): BarItem[] =>
+  INITIAL_BARS.map((bar) => ({
+    ...bar,
+    quantity: saved?.find((s) => s.id === bar.id)?.quantity ?? 0,
+  }));
 
 // Mapeamento de id de estoque → FlavorId do Planejamento
 export const STOCK_TO_FLAVOR_MAP: Record<string, string> = {

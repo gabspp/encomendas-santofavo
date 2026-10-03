@@ -3,6 +3,7 @@ import { Save, Share2, FileText, Loader2, X } from "lucide-react";
 import {
   INITIAL_ITEMS,
   INITIAL_BARS,
+  mergeBars,
   calculateTotals,
   calculateGrandTotal,
   generateReportText,
@@ -30,6 +31,16 @@ function deepCloneItems(items: StockItem[]): StockItem[] {
 
 export default function Estoque() {
   const [storeId, setStoreId] = useState<StoreId>("248");
+  // Loja precisa ser confirmada antes de registrar: "choose" ao abrir a página,
+  // ou a loja de destino ao trocar pelos botões.
+  const [storePrompt, setStorePrompt] = useState<"choose" | StoreId | null>("choose");
+  const [storeConfirmed, setStoreConfirmed] = useState(false);
+
+  function confirmStore(s: StoreId) {
+    setStoreId(s);
+    setStoreConfirmed(true);
+    setStorePrompt(null);
+  }
   const [reportDate, setReportDate] = useState<string>(todayISO());
   const [headers, setHeaders] = useState<string[]>(getInitialHeaders());
   const [items, setItems] = useState<StockItem[]>(deepCloneItems(INITIAL_ITEMS));
@@ -82,7 +93,7 @@ export default function Estoque() {
           }))
         );
         setItems(loaded);
-        setBars(data.bars ?? [...INITIAL_BARS]);
+        setBars(mergeBars(data.bars));
       }
     } catch {
       showToast("Erro ao carregar dados", "err");
@@ -92,8 +103,9 @@ export default function Estoque() {
   }, []);
 
   useEffect(() => {
+    if (!storeConfirmed) return;
     void loadData(reportDate, storeId);
-  }, [reportDate, storeId, loadData]);
+  }, [reportDate, storeId, storeConfirmed, loadData]);
 
   // ── Handlers de edição ─────────────────────────────────────────────────────
 
@@ -373,9 +385,9 @@ export default function Estoque() {
               {(["248", "26"] as StoreId[]).map((s) => (
                 <button
                   key={s}
-                  onClick={() => setStoreId(s)}
+                  onClick={() => { if (s !== storeId) setStorePrompt(s); }}
                   className={`px-4 py-2 rounded-lg text-sm font-semibold border transition-colors cursor-pointer ${
-                    storeId === s
+                    storeConfirmed && storeId === s
                       ? "bg-brand-brown text-white border-brand-brown"
                       : "border-gray-200 text-gray-700 hover:border-gray-400"
                   }`}
@@ -540,6 +552,52 @@ export default function Estoque() {
           Compartilhar
         </button>
       </div>
+
+      {/* ── Modal confirmação de loja ────────────────────────────────────────── */}
+      {storePrompt && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-sm w-full p-5 text-center">
+            {storePrompt === "choose" ? (
+              <>
+                <h3 className="font-bold text-gray-800 text-lg">Qual loja você vai registrar?</h3>
+                <p className="text-sm text-gray-500 mt-1 mb-4">Confirme a loja antes de lançar o estoque.</p>
+                <div className="grid grid-cols-2 gap-3">
+                  {(["248", "26"] as StoreId[]).map((s) => (
+                    <button
+                      key={s}
+                      onClick={() => confirmStore(s)}
+                      className="py-5 rounded-xl border-2 border-brand-brown text-brand-brown text-xl font-bold hover:bg-brand-brown hover:text-white transition-colors cursor-pointer"
+                    >
+                      Loja {s}
+                    </button>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <>
+                <h3 className="font-bold text-gray-800 text-lg">Trocar para a Loja {storePrompt}?</h3>
+                <p className="text-sm text-gray-500 mt-1 mb-4">
+                  Você está registrando a Loja {storeId}. O estoque passará a ser lançado na Loja {storePrompt}.
+                </p>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    onClick={() => setStorePrompt(null)}
+                    className="py-2.5 rounded-lg border border-gray-200 text-gray-700 text-sm font-semibold hover:border-gray-400 transition-colors cursor-pointer"
+                  >
+                    Continuar na {storeId}
+                  </button>
+                  <button
+                    onClick={() => confirmStore(storePrompt)}
+                    className="py-2.5 rounded-lg bg-brand-brown text-white text-sm font-semibold hover:bg-brand-brown/90 transition-colors cursor-pointer"
+                  >
+                    Trocar para {storePrompt}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ── Modal relatório ──────────────────────────────────────────────────── */}
       {showReport && (
