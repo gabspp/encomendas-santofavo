@@ -45,18 +45,26 @@ export function FolhaConteudo({
   const totalEncomendas = resumo.reduce((sum, r) => sum + r.qtd, 0);
   const temEncomendas = orderDetails.length > 0 || textoEncomendas.trim() !== "";
 
+  const [diaSemana, dataNum] = dataExtenso(date).split(", ");
+
   return (
     <div className="folha-producao">
       <header className="fp-header">
-        <h1>Produção Pão de Mel — Loja {storeId}</h1>
-        <p>{dataExtenso(date)}</p>
+        <div>
+          <p className="fp-marca">Santo Favo · Produção de Pão de Mel</p>
+          <h1>Loja {storeId}</h1>
+        </div>
+        <div className="fp-data">
+          <span>{diaSemana}</span>
+          <strong>{dataNum}</strong>
+        </div>
       </header>
 
       <table className="fp-tabela">
         <thead>
           <tr>
             <th>Sabor</th>
-            <th className="fp-num">Quantidade</th>
+            <th className="fp-num">Qtd.</th>
             <th className="fp-decor">Decorados</th>
           </tr>
         </thead>
@@ -88,13 +96,14 @@ export function FolhaConteudo({
                 return (
                   <div key={i} className="fp-encomenda">
                     <p className="fp-cliente">{o.clientName}</p>
-                    <p>
+                    <p className="fp-sabores">
                       {Object.entries(o.flavors)
                         .filter(([, q]) => q > 0)
-                        .map(([id, q]) => `${nomeCurto(id)} ${q}`)
-                        .join("  ·  ")}
+                        .map(([id, q]) => (
+                          <span key={id}><strong>{q}</strong> {nomeCurto(id)}</span>
+                        ))}
                     </p>
-                    {obs && <p className="fp-obs">Obs: {obs}</p>}
+                    {obs && <p className="fp-obs">{obs}</p>}
                   </div>
                 );
               })}

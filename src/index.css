@@ -7,45 +7,86 @@
 }
 
 /* ── Folha A4 de produção (Planejamento) ─────────────────────────────────── */
+/* Tudo com escopo em .folha-producao e bordas explícitas: o preflight do
+   Tailwind zera bordas/margens e sobrescreveria um estilo genérico. */
+
+@page { size: A4; margin: 14mm 14mm 16mm; }
 
 @media screen {
   .folha-producao { display: none; }
 }
 
 @media print {
-  @page { size: A4; margin: 15mm; }
   body { background: #fff !important; }
   body > *:not(.folha-producao) { display: none !important; }
 
   .folha-producao {
     display: block;
-    font-family: Arial, Helvetica, sans-serif;
-    color: #000;
-    font-size: 13pt;
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    font-size: 12pt;
+    line-height: 1.3;
+    color: #1a1a1a;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
-  .fp-header { border-bottom: 2px solid #000; padding-bottom: 6pt; margin-bottom: 12pt; }
-  .fp-header h1 { font-size: 18pt; font-weight: 700; text-transform: uppercase; margin: 0; }
-  .fp-header p { font-size: 13pt; margin: 2pt 0 0; }
+  .folha-producao p, .folha-producao h1, .folha-producao h2 { margin: 0; }
 
-  .fp-tabela { width: 100%; border-collapse: collapse; }
-  .fp-tabela th, .fp-tabela td { border: 1px solid #555; padding: 5pt 8pt; text-align: left; }
-  .fp-tabela th { font-size: 11pt; text-transform: uppercase; background: #eee; }
-  .fp-tabela tfoot td { font-weight: 700; border-top: 2px solid #000; }
-  .fp-num { width: 22%; text-align: center !important; font-weight: 700; }
-  .fp-decor { width: 30%; }
-  .fp-tabela tbody td { height: 20pt; }
-  .fp-resumo th, .fp-resumo td { text-align: center !important; }
-  .fp-resumo tbody td { height: auto; font-weight: 700; }
-  .fp-resumo .fp-total { border-left: 2px solid #000; }
+  /* Cabeçalho */
+  .fp-header {
+    display: flex; justify-content: space-between; align-items: flex-end;
+    padding-bottom: 8pt; margin-bottom: 14pt;
+    border-bottom: 3pt solid #512d1f;
+  }
+  .fp-marca { font-size: 9.5pt; letter-spacing: 1.2pt; text-transform: uppercase; color: #6b5a50; }
+  .fp-header h1 { font-size: 30pt; font-weight: 800; line-height: 1; color: #512d1f; margin-top: 3pt; }
+  .fp-data {
+    display: flex; flex-direction: column; align-items: flex-end;
+    border: 1.5pt solid #512d1f; border-radius: 6pt; padding: 5pt 10pt;
+  }
+  .fp-data span { font-size: 10pt; color: #6b5a50; }
+  .fp-data strong { font-size: 16pt; font-weight: 800; color: #512d1f; }
 
-  .fp-secao { margin-top: 14pt; }
+  /* Tabelas */
+  .fp-tabela { width: 100%; border-collapse: collapse; border: 1.5pt solid #512d1f; }
+  .fp-tabela th, .fp-tabela td {
+    border: 0.75pt solid #b9aaa0; padding: 6pt 10pt; text-align: left; vertical-align: middle;
+  }
+  .fp-tabela thead th {
+    background: #512d1f; color: #fff; border-color: #512d1f;
+    font-size: 9.5pt; font-weight: 700; letter-spacing: 0.8pt; text-transform: uppercase;
+  }
+  .fp-tabela tbody tr:nth-child(even) td { background: #f6f1ec; }
+  .fp-tabela tbody td { height: 24pt; font-size: 12.5pt; }
+  .fp-tabela tfoot td {
+    background: #efe5dc; border-top: 1.5pt solid #512d1f;
+    font-weight: 800; font-size: 13pt; height: 26pt;
+  }
+  .fp-num { width: 18%; text-align: center !important; }
+  td.fp-num { font-weight: 800; font-size: 15pt !important; }
+  .fp-decor { width: 32%; }
+  td.fp-decor { background: #fff !important; }
+
+  /* Seções */
+  .fp-secao { margin-top: 16pt; }
   .fp-inteira { break-inside: avoid; }
-  .fp-secao h2 { break-after: avoid; }
-  .fp-secao h2 { font-size: 14pt; font-weight: 700; text-transform: uppercase; border-bottom: 1px solid #000; margin: 0 0 8pt; padding-bottom: 3pt; }
-  .fp-encomendas { columns: 2; column-gap: 18pt; }
-  .fp-encomenda { padding: 5pt 0; border-bottom: 1px dashed #999; break-inside: avoid; }
-  .fp-encomenda p { margin: 0; }
-  .fp-cliente { font-weight: 700; }
-  .fp-obs { font-style: italic; font-size: 12pt; }
-  .fp-texto { white-space: pre-wrap; font-family: inherit; font-size: 12pt; margin: 0; }
+  .fp-secao h2 {
+    font-size: 11pt; font-weight: 800; letter-spacing: 1pt; text-transform: uppercase;
+    color: #512d1f; margin-bottom: 8pt; break-after: avoid;
+  }
+
+  /* Encomendas */
+  .fp-encomendas { display: grid; grid-template-columns: 1fr 1fr; gap: 8pt; }
+  .fp-encomenda {
+    border: 1pt solid #b9aaa0; border-left: 3.5pt solid #512d1f; border-radius: 4pt;
+    padding: 6pt 9pt; break-inside: avoid;
+  }
+  .fp-cliente { font-weight: 800; font-size: 12pt; }
+  .fp-sabores { display: flex; flex-wrap: wrap; gap: 3pt 10pt; margin-top: 2pt !important; font-size: 11.5pt; }
+  .fp-obs { margin-top: 4pt !important; font-size: 10pt; font-style: italic; color: #4a4a4a; }
+  .fp-texto { white-space: pre-wrap; font-family: inherit; font-size: 11.5pt; margin: 0; }
+
+  /* Resumo */
+  .fp-resumo th, .fp-resumo td { text-align: center !important; }
+  .fp-resumo tbody td { height: auto; font-size: 15pt; font-weight: 800; background: #fff !important; }
+  .fp-resumo .fp-total { background: #efe5dc !important; border-left: 1.5pt solid #512d1f; }
 }
