@@ -7,10 +7,15 @@
 }
 
 /* ── Folha A4 de produção (Planejamento) ─────────────────────────────────── */
-/* Tudo com escopo em .folha-producao e bordas explícitas: o preflight do
-   Tailwind zera bordas/margens e sobrescreveria um estilo genérico. */
+/* Layout "Ficha de Producao v2" (claude.ai/design). Estilos com escopo em
+   .folha-producao e bordas explícitas: o preflight do Tailwind zera
+   bordas/margens/listas e sobrescreveria um estilo genérico. */
 
-@page { size: A4; margin: 14mm 14mm 16mm; }
+@font-face { font-family: "Pipo"; src: url("/fonts/Pipo-Bold.otf") format("opentype"); font-weight: 700; }
+@font-face { font-family: "Fig Grotesk"; src: url("/fonts/FigGrotesk-Regular.otf") format("opentype"); font-weight: 400; font-style: normal; }
+@font-face { font-family: "Fig Grotesk"; src: url("/fonts/FigGrotesk-RegularItalic.otf") format("opentype"); font-weight: 400; font-style: italic; }
+
+@page { size: A4; margin: 14mm 15mm; }
 
 @media screen {
   .folha-producao { display: none; }
@@ -21,72 +26,82 @@
   body > *:not(.folha-producao) { display: none !important; }
 
   .folha-producao {
-    display: block;
-    font-family: "Helvetica Neue", Arial, sans-serif;
-    font-size: 12pt;
+    display: flex; flex-direction: column; gap: 9mm;
+    font-family: "Fig Grotesk", sans-serif;
+    color: #1E1410;
+    font-variant-numeric: tabular-nums;
     line-height: 1.3;
-    color: #1a1a1a;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
   }
-  .folha-producao p, .folha-producao h1, .folha-producao h2 { margin: 0; }
+  .folha-producao h1, .folha-producao h2, .folha-producao ul { margin: 0; }
+  .folha-producao strong { font-weight: 700; }
+  .fp-inteira { break-inside: avoid; }
 
   /* Cabeçalho */
   .fp-header {
-    display: flex; justify-content: space-between; align-items: flex-end;
-    padding-bottom: 8pt; margin-bottom: 14pt;
-    border-bottom: 3pt solid #512d1f;
+    display: flex; justify-content: space-between; align-items: flex-end; gap: 16px;
+    border-bottom: 2px solid #1E1410; padding-bottom: 4mm;
   }
-  .fp-marca { font-size: 9.5pt; letter-spacing: 1.2pt; text-transform: uppercase; color: #6b5a50; }
-  .fp-header h1 { font-size: 30pt; font-weight: 800; line-height: 1; color: #512d1f; margin-top: 3pt; }
-  .fp-data {
-    display: flex; flex-direction: column; align-items: flex-end;
-    border: 1.5pt solid #512d1f; border-radius: 6pt; padding: 5pt 10pt;
-  }
-  .fp-data span { font-size: 10pt; color: #6b5a50; }
-  .fp-data strong { font-size: 16pt; font-weight: 800; color: #512d1f; }
+  .fp-titulo { display: flex; flex-direction: column; gap: 4px; }
+  .fp-titulo h1 { font-family: "Pipo", serif; font-weight: 700; font-size: 28px; line-height: 1.1; }
+  .fp-titulo span { font-size: 16px; }
+  .fp-total-topo { display: flex; align-items: baseline; gap: 8px; }
+  .fp-total-topo span { font-size: 14px; }
+  .fp-total-topo strong { font-family: "Pipo", serif; font-size: 40px; line-height: 1; }
 
-  /* Tabelas */
-  .fp-tabela { width: 100%; border-collapse: collapse; border: 1.5pt solid #512d1f; }
-  .fp-tabela th, .fp-tabela td {
-    border: 0.75pt solid #b9aaa0; padding: 6pt 10pt; text-align: left; vertical-align: middle;
+  /* Sabores */
+  .fp-cab-sabores {
+    display: grid; grid-template-columns: minmax(0, 1fr) 24mm 50mm;
+    font-size: 11px; letter-spacing: .14em; text-transform: uppercase;
+    padding-bottom: 6px; border-bottom: 1.5px solid #1E1410;
   }
-  .fp-tabela thead th {
-    background: #512d1f; color: #fff; border-color: #512d1f;
-    font-size: 9.5pt; font-weight: 700; letter-spacing: 0.8pt; text-transform: uppercase;
+  .fp-dir { text-align: right; }
+  .fp-cab-decor { padding-left: 6mm; }
+  .fp-sabor {
+    display: grid; grid-template-columns: minmax(0, 1fr) 50mm; align-items: end;
+    border-bottom: 1px solid #E4DAD2; font-size: 17px;
   }
-  .fp-tabela tbody tr:nth-child(even) td { background: #f6f1ec; }
-  .fp-tabela tbody td { height: 24pt; font-size: 12.5pt; }
-  .fp-tabela tfoot td {
-    background: #efe5dc; border-top: 1.5pt solid #512d1f;
-    font-weight: 800; font-size: 13pt; height: 26pt;
+  .fp-sabor-linha { padding: 7px 0; display: flex; align-items: baseline; gap: 6px; }
+  .fp-pontilhado { flex: 1; border-bottom: 2px dotted #1E1410; transform: translateY(-4px); }
+  .fp-sabor-qtd { font-size: 22px; }
+  .fp-decor {
+    align-self: stretch; display: flex; align-items: flex-end;
+    margin-left: 6mm; padding: 0 0 8px 4mm; border-left: 1px solid #1E1410;
   }
-  .fp-num { width: 18%; text-align: center !important; }
-  td.fp-num { font-weight: 800; font-size: 15pt !important; }
-  .fp-decor { width: 32%; }
-  td.fp-decor { background: #fff !important; }
+  .fp-decor span { width: 14mm; height: 1px; border-bottom: 1px solid #1E1410; }
+  .fp-sabor-total {
+    display: grid; grid-template-columns: minmax(0, 1fr) 24mm 50mm; align-items: baseline;
+    padding: 8px 0; font-size: 17px;
+  }
+  .fp-sabor-total strong { text-align: right; font-family: "Pipo", serif; font-size: 24px; }
 
-  /* Seções */
-  .fp-secao { margin-top: 16pt; }
-  .fp-inteira { break-inside: avoid; }
-  .fp-secao h2 {
-    font-size: 11pt; font-weight: 800; letter-spacing: 1pt; text-transform: uppercase;
-    color: #512d1f; margin-bottom: 8pt; break-after: avoid;
+  /* Cabeçalho de seção */
+  .fp-cab-secao {
+    display: flex; justify-content: space-between; align-items: baseline;
+    padding-bottom: 6px; border-bottom: 1.5px solid #1E1410; break-after: avoid;
   }
+  .fp-cab-secao h2 { font-size: 11px; font-weight: 400; letter-spacing: .14em; text-transform: uppercase; }
+  .fp-cab-secao span { font-size: 13px; }
 
-  /* Encomendas */
-  .fp-encomendas { display: grid; grid-template-columns: 1fr 1fr; gap: 8pt; }
+  /* Encomendas: 2 colunas com divisória central */
+  .fp-encomendas {
+    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 10mm;
+    background: linear-gradient(#1E1410, #1E1410) center top / 1px 100% no-repeat;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
   .fp-encomenda {
-    border: 1pt solid #b9aaa0; border-left: 3.5pt solid #512d1f; border-radius: 4pt;
-    padding: 6pt 9pt; break-inside: avoid;
+    display: grid; grid-template-columns: minmax(0, 1fr) 14mm; gap: 2px 3mm;
+    padding: 9px 0; border-bottom: 1px solid #E4DAD2; break-inside: avoid;
   }
-  .fp-cliente { font-weight: 800; font-size: 12pt; }
-  .fp-sabores { display: flex; flex-wrap: wrap; gap: 3pt 10pt; margin-top: 2pt !important; font-size: 11.5pt; }
-  .fp-obs { margin-top: 4pt !important; font-size: 10pt; font-style: italic; color: #4a4a4a; }
-  .fp-texto { white-space: pre-wrap; font-family: inherit; font-size: 11.5pt; margin: 0; }
+  .fp-encomenda-corpo { display: flex; flex-direction: column; gap: 4px; }
+  .fp-cliente { font-family: "Pipo", serif; font-weight: 700; font-size: 17px; margin-bottom: 4px; }
+  .fp-encomenda ul, .fp-resumo { list-style: disc; padding-left: 18px; }
+  .fp-encomenda ul { font-size: 14px; line-height: 1.45; }
+  .fp-obs { font-style: italic; font-size: 13px; line-height: 1.4; margin-top: 2px; text-wrap: pretty; }
+  .fp-encomenda-total { text-align: right; font-size: 22px; }
+  .fp-texto { white-space: pre-wrap; font-family: inherit; font-size: 14px; margin: 8px 0 0; }
 
   /* Resumo */
-  .fp-resumo th, .fp-resumo td { text-align: center !important; }
-  .fp-resumo tbody td { height: auto; font-size: 15pt; font-weight: 800; background: #fff !important; }
-  .fp-resumo .fp-total { background: #efe5dc !important; border-left: 1.5pt solid #512d1f; }
+  .fp-resumo { padding-top: 8px; font-size: 16px; line-height: 1.5; }
+  .fp-resumo-total { display: flex; gap: 8px; align-items: baseline; padding-top: 6px; font-size: 16px; }
+  .fp-resumo-total strong { font-family: "Pipo", serif; font-size: 22px; }
 }
