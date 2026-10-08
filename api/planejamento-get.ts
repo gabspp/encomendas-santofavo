@@ -50,5 +50,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     orderDetails: data.order_details ?? [],
     textoEncomendas: data.texto_encomendas ?? "",
     transferenciaAjuste: data.transferencia_ajuste ?? {},
+    ignorarMes: data.ignorar_mes ?? null, // null = registro anterior ao interruptor
   });
 }

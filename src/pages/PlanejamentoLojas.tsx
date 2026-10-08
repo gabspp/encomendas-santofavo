@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { Copy, Loader2, RefreshCw, ArrowRight } from "lucide-react";
+import { Copy, Loader2, RefreshCw, ArrowRight, Printer } from "lucide-react";
+import { FolhaProducao } from "@/components/planejamento/FolhaProducao";
 import {
   SABORES,
   SABORES_IDS,
@@ -7,6 +8,7 @@ import {
   TRAY_SIZE,
   sugerirTotalProducao,
   aplicarTransferencia,
+  calcularProducao,
   parseTextToFlavors,
 } from "@/utils/producao";
 import type { FlavorId, FlavorData, OrderDetail, TransferenciaAjuste } from "@/utils/producao";
@@ -99,17 +101,23 @@ function TabelaCalculo({
   totalFechado,
   onAjuste,
   onResetAjustes,
+  ocultarMes = false,
+  extraMes = 0,
 }: {
   storeLabel: string;
   flavorData: Record<FlavorId, FlavorData>;
   dlsemToggle: boolean;
+  ocultarMes?: boolean;
+  extraMes?: number;
   totalAjustes: number;
   totalProducao: number;
   totalFechado: boolean;
   onAjuste: (id: FlavorId, v: number) => void;
   onResetAjustes: () => void;
 }) {
-  const sabores = SABORES.filter((s) => s.id !== "DLSem" || dlsemToggle);
+  const sabores = SABORES.filter(
+    (s) => (s.id !== "DLSem" || dlsemToggle) && (s.id !== "Mes" || !ocultarMes),
+  );
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
@@ -175,7 +183,10 @@ function TabelaCalculo({
         </table>
       </div>
 
-      <div className="px-4 py-3 border-t border-gray-100 flex justify-end">
+      <div className="px-4 py-3 border-t border-gray-100 flex items-center justify-end gap-2">
+        {extraMes > 0 && (
+          <span className="text-xs text-gray-500">inclui +{extraMes} Mês da 248</span>
+        )}
         <span
           className={`inline-flex items-center gap-1.5 text-sm font-semibold px-3 py-1.5 rounded-full ${
             totalFechado ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
@@ -231,20 +242,61 @@ export default function PlanejamentoLojas() {
     [sobraBase26, sobraBase248, transferencia],
   );
 
-  const loja26 = usePlanejamentoLoja({
-    storeId: "26",
-    date,
-    sobras: sobrasEfetivas.sobras26,
-    encomendas: encomendas26,
-    textoEncomendas,
-  });
+  // PDM do mês quase sempre é feito só na 26: com o interruptor ligado a 248
+  // redistribui a parte do Mês entre os outros sabores e a 26 produz essa
+  // quantidade a mais.
+  const [ignorarMes248, setIgnorarMes248] = useState(true);
+
   const loja248 = usePlanejamentoLoja({
     storeId: "248",
     date,
     sobras: sobrasEfetivas.sobras248,
     encomendas: BLANK_FLAVORS,
     textoEncomendas: "",
+    ignorarMes: ignorarMes248,
   });
+
+  // Mês que a 248 produziria sem o interruptor → vai para a produção da 26
+  const mesRealocado = useMemo(
+    () => ignorarMes248
+      ? calcularProducao(sobrasEfetivas.sobras248, BLANK_FLAVORS, loja248.totalProducao, false).Mes.sugerido
+      : 0,
+    [ignorarMes248, sobrasEfetivas.sobras248, loja248.totalProducao],
+  );
+
+  const loja26 = usePlanejamentoLoja({
+    storeId: "26",
+    date,
+    sobras: sobrasEfetivas.sobras26,
+    encomendas: encomendas26,
+    textoEncomendas,
+    extraMes: mesRealocado,
+  });
+
+  function handleIgnorarMes(v: boolean) {
+    setIgnorarMes248(v);
+    // Ajustes salvos sobrescrevem a sugestão: recalcula a 248 e o Mês da 26
+    loja248.resetAjustes();
+    loja26.setAjustes((a) => {
+      const { Mes: _mes, ...resto } = a;
+      return resto;
+    });
+  }
+
+  // ── Folha A4 de produção ────────────────────────────────────────────────────
+
+  const [lojaImpressao, setLojaImpressao] = useState<StoreId>("26");
+  const [pedidoImpressao, setPedidoImpressao] = useState(0);
+
+  useEffect(() => {
+    // Roda depois do render: a folha já está com a loja escolhida
+    if (pedidoImpressao > 0) window.print();
+  }, [pedidoImpressao]);
+
+  function handleImprimir(storeId: StoreId) {
+    setLojaImpressao(storeId);
+    setPedidoImpressao((n) => n + 1);
+  }
 
   // ── Carregar venda média diária (uma vez) ───────────────────────────────────
 
@@ -308,6 +360,7 @@ export default function PlanejamentoLojas() {
         loja248.setAjustes({});
         loja248.setTotalProducao(0);
         loja248.setDlsemToggle(false);
+        setIgnorarMes248(true);
         setLoadingData(false);
         return;
       }
@@ -336,6 +389,8 @@ export default function PlanejamentoLojas() {
       loja248.setAjustes(data248.ajustes ?? {});
       loja248.setTotalProducao(data248.totalProducao ?? 0);
       loja248.setDlsemToggle(false);
+      // null = dia salvo antes do interruptor existir → mantém o cálculo antigo
+      setIgnorarMes248(data248.empty ? true : data248.ignorarMes ?? false);
     } catch {
       showToast("Erro ao carregar dados", "err");
     } finally {
@@ -475,7 +530,7 @@ export default function PlanejamentoLojas() {
               ajustes: Object.fromEntries(SABORES_IDS.map((id) => [id, loja248.flavorData[id]?.ajuste ?? 0])),
               totalProducao: loja248.totalProducao, dlsemToggle: false,
               orderDetails: [], formattedMessage: loja248.mensagem, textoEncomendas: "",
-              transferenciaAjuste: transf248,
+              transferenciaAjuste: transf248, ignorarMes: ignorarMes248,
             }),
           }),
         ]);
@@ -484,7 +539,7 @@ export default function PlanejamentoLojas() {
       }
     }, 1000);
     return () => clearTimeout(saveTimer.current);
-  }, [date, sobrasEfetivas, encomendas26, orderDetails, textoEncomendas, transferencia, loja26.flavorData, loja26.totalProducao, loja26.dlsemToggle, loja26.mensagem, loja248.flavorData, loja248.totalProducao, loja248.mensagem]);
+  }, [date, sobrasEfetivas, encomendas26, orderDetails, textoEncomendas, transferencia, loja26.flavorData, loja26.totalProducao, loja26.dlsemToggle, loja26.mensagem, loja248.flavorData, loja248.totalProducao, loja248.mensagem, ignorarMes248]);
 
   // ── Copiar mensagens ─────────────────────────────────────────────────────────
 
@@ -781,7 +836,24 @@ export default function PlanejamentoLojas() {
                   <span className="bg-gray-100 rounded-full px-2.5 py-1">
                     Para loja: <strong className="text-gray-700">{paraLoja}</strong>
                   </span>
+                  {id === "26" && mesRealocado > 0 && (
+                    <span className="bg-amber-50 text-brand-brown border border-amber-200 rounded-full px-2.5 py-1">
+                      +<strong>{mesRealocado}</strong> Mês da 248
+                    </span>
+                  )}
                 </div>
+                {id === "248" && (
+                  <label className="flex items-center gap-2 mt-3 text-sm text-gray-700 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={ignorarMes248}
+                      onChange={(e) => handleIgnorarMes(e.target.checked)}
+                      className="accent-brand-brown w-4 h-4 cursor-pointer"
+                    />
+                    Ignorar PDM do mês
+                    <span className="text-xs text-gray-400">(produzido na 26)</span>
+                  </label>
+                )}
               </div>
             );
           })}
@@ -795,8 +867,9 @@ export default function PlanejamentoLojas() {
           flavorData={loja26.flavorData}
           dlsemToggle={loja26.dlsemToggle}
           totalAjustes={loja26.totalAjustes}
-          totalProducao={loja26.totalProducao}
+          totalProducao={loja26.totalAlvo}
           totalFechado={loja26.totalFechado}
+          extraMes={mesRealocado}
           onAjuste={loja26.handleAjuste}
           onResetAjustes={loja26.resetAjustes}
         />
@@ -805,8 +878,9 @@ export default function PlanejamentoLojas() {
           flavorData={loja248.flavorData}
           dlsemToggle={false}
           totalAjustes={loja248.totalAjustes}
-          totalProducao={loja248.totalProducao}
+          totalProducao={loja248.totalAlvo}
           totalFechado={loja248.totalFechado}
+          ocultarMes={ignorarMes248}
           onAjuste={loja248.handleAjuste}
           onResetAjustes={loja248.resetAjustes}
         />
@@ -820,6 +894,14 @@ export default function PlanejamentoLojas() {
         <div key={id} className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-sm font-bold text-gray-800 uppercase tracking-wide">Mensagem — Loja {id}</h2>
+            <div className="flex items-center gap-2">
+            <button
+              onClick={() => handleImprimir(id)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium border border-gray-200 text-gray-700 hover:border-gray-400 transition-colors cursor-pointer"
+            >
+              <Printer className="h-3.5 w-3.5" />
+              Imprimir A4
+            </button>
             <button
               onClick={() => void handleCopiar(id)}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-brand-brown text-white hover:opacity-90 transition-opacity cursor-pointer"
@@ -827,6 +909,7 @@ export default function PlanejamentoLojas() {
               <Copy className="h-3.5 w-3.5" />
               {copied ? "Copiado!" : "Copiar"}
             </button>
+            </div>
           </div>
           <textarea
             value={mensagem}
@@ -836,6 +919,15 @@ export default function PlanejamentoLojas() {
           />
         </div>
       ))}
+
+      <FolhaProducao
+        storeId={lojaImpressao}
+        date={date}
+        flavorData={lojaImpressao === "26" ? loja26.flavorData : loja248.flavorData}
+        orderDetails={lojaImpressao === "26" ? orderDetails : []}
+        textoEncomendas={lojaImpressao === "26" ? textoEncomendas : ""}
+        encomendas={lojaImpressao === "26" ? encomendas26 : BLANK_FLAVORS}
+      />
     </div>
   );
 }
@@ -850,4 +942,5 @@ interface PlanejamentoGetResponse {
   orderDetails?: OrderDetail[];
   textoEncomendas?: string;
   transferenciaAjuste?: TransferenciaAjuste;
+  ignorarMes?: boolean | null;
 }

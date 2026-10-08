@@ -65,6 +65,10 @@ export const NOTION_FLAVOR_MAP: Record<string, FlavorId> = {
  * - Car (SABOR_RESTANTE) recebe totalProducao - soma(outros) para fechar o total exato
  * - DLSem só é calculado se dlsemToggle=true; proporção = 0 (só encomenda)
  * - ajustesAtuais: se fornecido, mantem ajustes manuais já definidos; caso contrário usa sugerido
+ * - opts.ignorarMes: loja não produz o sabor do Mês; a proporção dele é
+ *   redistribuída entre os outros sabores (total da loja não muda)
+ * - opts.extraMes: Mês realocado de outra loja — somado ao sugerido do Mês
+ *   depois do fechamento do total (a loja produz a mais)
  */
 export function calcularProducao(
   sobras: Record<FlavorId, number>,
@@ -72,7 +76,14 @@ export function calcularProducao(
   totalProducao: number,
   dlsemToggle: boolean,
   ajustesAtuais?: Partial<Record<FlavorId, number>>,
+  opts?: { ignorarMes?: boolean; extraMes?: number },
 ): Record<FlavorId, FlavorData> {
+  const ignorarMes = opts?.ignorarMes ?? false;
+  const extraMes = opts?.extraMes ?? 0;
+  const propMes = SABORES.find((s) => s.id === "Mes")?.prop ?? 0;
+  // Sem o Mês, os outros sabores dividem 100% da meta da loja
+  const fatorProp = ignorarMes ? 1 / (1 - propMes) : 1;
+
   const totalSobras = SABORES_IDS.reduce((s, id) => s + (sobras[id] ?? 0), 0);
   const totalEncomendas = SABORES_IDS.reduce((s, id) => s + (encomendas[id] ?? 0), 0);
   const totalParaLoja = Math.max(0, totalProducao + totalSobras - totalEncomendas);
@@ -92,12 +103,15 @@ export function calcularProducao(
       // Só encomenda — meta = 0, sugerido = quantidade da encomenda (se toggle ligado)
       metaLoja = 0;
       sugerido = dlsemToggle ? enc : 0;
+    } else if (id === "Mes" && ignorarMes) {
+      metaLoja = 0;
+      sugerido = 0;
     } else if (id !== SABOR_RESTANTE) {
-      metaLoja = Math.round(totalParaLoja * sabor.prop);
+      metaLoja = Math.round(totalParaLoja * sabor.prop * fatorProp);
       sugerido = Math.max(0, metaLoja - sobra + enc);
     } else {
       // Car: calculado depois
-      metaLoja = Math.round(totalParaLoja * sabor.prop);
+      metaLoja = Math.round(totalParaLoja * sabor.prop * fatorProp);
       sugerido = Math.max(0, metaLoja - sobra + enc);
     }
 
@@ -126,6 +140,9 @@ export function calcularProducao(
 
   // Passo 3: Car recebe o resto
   result[SABOR_RESTANTE].sugerido = Math.max(0, totalProducao - somaOutros);
+
+  // Passo 3b: Mês realocado de outra loja entra por cima do total
+  if (extraMes > 0) result.Mes.sugerido += extraMes;
 
   // Passo 4: ajuste = ajuste manual se definido, senão usa sugerido
   for (const id of SABORES_IDS) {

@@ -15,6 +15,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     totalProducao = 196, dlsemToggle = false,
     orderDetails = [], formattedMessage = "", textoEncomendas = "",
     transferenciaAjuste,
+    ignorarMes,
   } = req.body ?? {};
 
   if (!date || !storeId) return res.status(400).json({ error: "date e storeId obrigatórios" });
@@ -49,6 +50,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // contrário o upsert preserva o valor já salvo (evita que o auto-save da
     // página de 1 loja apague a transferência salva pela página de 2 lojas).
     ...(transferenciaAjuste !== undefined ? { transferencia_ajuste: transferenciaAjuste } : {}),
+    ...(typeof ignorarMes === "boolean" ? { ignorar_mes: ignorarMes } : {}),
   };
 
   const { error } = await supabase

@@ -5,3 +5,47 @@
   --color-brand-brown: #512d1f;
   --color-brand-cream: #fdf8f0;
 }
+
+/* ── Folha A4 de produção (Planejamento) ─────────────────────────────────── */
+
+@media screen {
+  .folha-producao { display: none; }
+}
+
+@media print {
+  @page { size: A4; margin: 15mm; }
+  body { background: #fff !important; }
+  body > *:not(.folha-producao) { display: none !important; }
+
+  .folha-producao {
+    display: block;
+    font-family: Arial, Helvetica, sans-serif;
+    color: #000;
+    font-size: 13pt;
+  }
+  .fp-header { border-bottom: 2px solid #000; padding-bottom: 6pt; margin-bottom: 12pt; }
+  .fp-header h1 { font-size: 18pt; font-weight: 700; text-transform: uppercase; margin: 0; }
+  .fp-header p { font-size: 13pt; margin: 2pt 0 0; }
+
+  .fp-tabela { width: 100%; border-collapse: collapse; }
+  .fp-tabela th, .fp-tabela td { border: 1px solid #555; padding: 5pt 8pt; text-align: left; }
+  .fp-tabela th { font-size: 11pt; text-transform: uppercase; background: #eee; }
+  .fp-tabela tfoot td { font-weight: 700; border-top: 2px solid #000; }
+  .fp-num { width: 22%; text-align: center !important; font-weight: 700; }
+  .fp-decor { width: 30%; }
+  .fp-tabela tbody td { height: 20pt; }
+  .fp-resumo th, .fp-resumo td { text-align: center !important; }
+  .fp-resumo tbody td { height: auto; font-weight: 700; }
+  .fp-resumo .fp-total { border-left: 2px solid #000; }
+
+  .fp-secao { margin-top: 14pt; }
+  .fp-inteira { break-inside: avoid; }
+  .fp-secao h2 { break-after: avoid; }
+  .fp-secao h2 { font-size: 14pt; font-weight: 700; text-transform: uppercase; border-bottom: 1px solid #000; margin: 0 0 8pt; padding-bottom: 3pt; }
+  .fp-encomendas { columns: 2; column-gap: 18pt; }
+  .fp-encomenda { padding: 5pt 0; border-bottom: 1px dashed #999; break-inside: avoid; }
+  .fp-encomenda p { margin: 0; }
+  .fp-cliente { font-weight: 700; }
+  .fp-obs { font-style: italic; font-size: 12pt; }
+  .fp-texto { white-space: pre-wrap; font-family: inherit; font-size: 12pt; margin: 0; }
+}

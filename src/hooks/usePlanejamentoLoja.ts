@@ -8,6 +8,10 @@ interface UsePlanejamentoLojaParams {
   sobras: Record<FlavorId, number>; // efetivas (pós-transferência)
   encomendas: Record<FlavorId, number>;
   textoEncomendas: string;
+  /** Loja não produz o sabor do Mês (redistribui entre os outros). */
+  ignorarMes?: boolean;
+  /** Mês realocado de outra loja, produzido a mais por esta. */
+  extraMes?: number;
 }
 
 /**
@@ -23,6 +27,8 @@ export function usePlanejamentoLoja({
   sobras,
   encomendas,
   textoEncomendas,
+  ignorarMes = false,
+  extraMes = 0,
 }: UsePlanejamentoLojaParams) {
   const [ajustes, setAjustes] = useState<Partial<Record<FlavorId, number>>>({});
   const [dlsemToggle, setDlsemToggle] = useState(false);
@@ -33,9 +39,9 @@ export function usePlanejamentoLoja({
   const [mensagem, setMensagem] = useState("");
 
   useEffect(() => {
-    const result = calcularProducao(sobras, encomendas, totalProducao, dlsemToggle, ajustes);
+    const result = calcularProducao(sobras, encomendas, totalProducao, dlsemToggle, ajustes, { ignorarMes, extraMes });
     setFlavorData(result);
-  }, [sobras, encomendas, totalProducao, dlsemToggle, ajustes]);
+  }, [sobras, encomendas, totalProducao, dlsemToggle, ajustes, ignorarMes, extraMes]);
 
   useEffect(() => {
     const efetivos = Object.fromEntries(
@@ -54,7 +60,8 @@ export function usePlanejamentoLoja({
   }
 
   const totalAjustes = SABORES_IDS.reduce((sum, id) => sum + (flavorData[id]?.ajuste ?? 0), 0);
-  const totalFechado = totalAjustes === totalProducao;
+  const totalAlvo = totalProducao + extraMes;
+  const totalFechado = totalAjustes === totalAlvo;
 
   return {
     ajustes,
@@ -68,6 +75,7 @@ export function usePlanejamentoLoja({
     flavorData,
     mensagem,
     totalAjustes,
+    totalAlvo,
     totalFechado,
   };
 }
