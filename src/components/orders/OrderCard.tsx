@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { Clock, Share2, Loader2, Printer, Check } from "lucide-react";
 import { toPng } from "html-to-image";
 import { supabase } from "@/lib/supabase";
-import { gerarZplPedido } from "@/lib/zpl/etiqueta-pedido";
+import { gerarZplPedido, gerarZplEntrega } from "@/lib/zpl/etiqueta-pedido";
 import type { ParsedOrder, ProductItem, OrderStatus } from "@/types";
 import { formatBrDateWithDay, extractHorario, stripHorario, extractCaixasStr, stripCaixas } from "@/utils/notion";
 import { useAuth } from "@/contexts/AuthContext";
@@ -358,8 +358,22 @@ export function OrderCard({ order, onStatusChange, onEntregaChange, onDateChange
   }
 
   const [printState, setPrintState] = useState<"idle" | "sending" | "sent" | "error">("idle");
+  const [printMenu, setPrintMenu] = useState(false);
+  const printMenuRef = useRef<HTMLDivElement>(null);
+  // Retirada não tem endereço: vai direto para a etiqueta completa
+  const temEtiquetaEntrega = order.entrega.startsWith("Entrega") && !!order.endereco;
 
-  async function handlePrint() {
+  useEffect(() => {
+    if (!printMenu) return;
+    function fechar(e: MouseEvent) {
+      if (!printMenuRef.current?.contains(e.target as Node)) setPrintMenu(false);
+    }
+    document.addEventListener("mousedown", fechar);
+    return () => document.removeEventListener("mousedown", fechar);
+  }, [printMenu]);
+
+  async function handlePrint(tipo: "completa" | "entrega") {
+    setPrintMenu(false);
     if (printState === "sending") return;
     setPrintState("sending");
     try {
@@ -370,7 +384,10 @@ export function OrderCard({ order, onStatusChange, onEntregaChange, onDateChange
           "Content-Type": "application/json",
           Authorization: `Bearer ${session?.access_token ?? ""}`,
         },
-        body: JSON.stringify({ action: "etiqueta", zpl: gerarZplPedido(order) }),
+        body: JSON.stringify({
+          action: "etiqueta",
+          zpl: tipo === "entrega" ? gerarZplEntrega(order) : gerarZplPedido(order),
+        }),
       });
       if (!res.ok) throw new Error(await res.text());
       setPrintState("sent");
@@ -459,8 +476,9 @@ export function OrderCard({ order, onStatusChange, onEntregaChange, onDateChange
             onStatusChange={onStatusChange}
           />
           <div data-share-exclude className="flex items-center gap-2.5">
+            <div ref={printMenuRef} className="relative flex">
             <button
-              onClick={handlePrint}
+              onClick={() => temEtiquetaEntrega ? setPrintMenu((v) => !v) : void handlePrint("completa")}
               disabled={printState === "sending"}
               title={
                 printState === "sent" ? "Etiqueta enviada para a impressora"
@@ -477,6 +495,25 @@ export function OrderCard({ order, onStatusChange, onEntregaChange, onDateChange
                 : printState === "sent" ? <Check className="h-3.5 w-3.5" />
                 : <Printer className="h-3.5 w-3.5" />}
             </button>
+            {printMenu && (
+              <div className="absolute right-0 top-5 z-20 w-44 bg-white border border-gray-200 rounded-lg shadow-lg py-1 text-left">
+                <button
+                  onClick={() => void handlePrint("completa")}
+                  className="w-full px-3 py-2 text-xs text-gray-700 hover:bg-gray-50 text-left cursor-pointer"
+                >
+                  <span className="font-semibold block">Etiqueta completa</span>
+                  <span className="text-gray-400">com produtos</span>
+                </button>
+                <button
+                  onClick={() => void handlePrint("entrega")}
+                  className="w-full px-3 py-2 text-xs text-gray-700 hover:bg-gray-50 text-left cursor-pointer"
+                >
+                  <span className="font-semibold block">Etiqueta de entrega</span>
+                  <span className="text-gray-400">nome, endereço e telefone</span>
+                </button>
+              </div>
+            )}
+            </div>
             <button
               onClick={handleShare}
               disabled={sharing}

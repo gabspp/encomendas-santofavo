@@ -10,6 +10,12 @@
 //   Telefone
 //   ───────────────
 //   1 x Bolo PDM G …
+//
+// Etiqueta de entrega (gerarZplEntrega) — para colar no pacote:
+//   Nome do cliente (grande)
+//   Endereço (letra grande, até 4 linhas)
+//   ───────────────
+//   Telefone                    10/10 - 11:00
 
 import type { ParsedOrder } from "@/types";
 import { extractHorario, stripCaixas } from "@/utils/notion";
@@ -59,8 +65,8 @@ export const FORMATO_PEDIDO_60x40: FormatoPedido = {
   espacoLinhas: 3,
 };
 
-/** Formato em uso. ⬅ Trocar para FORMATO_PEDIDO_60x40 quando mudar o rolo. */
-export const FORMATO_PEDIDO: FormatoPedido = FORMATO_PEDIDO_50x30;
+/** Formato em uso (rolo 60x40 desde 10/10/2026). ⬅ Trocar aqui ao mudar o rolo. */
+export const FORMATO_PEDIDO: FormatoPedido = FORMATO_PEDIDO_60x40;
 
 /**
  * Largura estimada de um caractere da fonte ^A0, como fração do corpo.
@@ -234,6 +240,53 @@ export function gerarZplPedido(order: ParsedOrder, formato: FormatoPedido = FORM
   if (produtos.length > mostrar && cabem > 0) {
     const resto = produtos.length - mostrar;
     linha(`+${resto} ${resto === 1 ? "item" : "itens"}`, fonteProdutos);
+  }
+
+  saida.push("^PQ1", "^XZ");
+  return saida.join("\n");
+}
+
+/**
+ * Etiqueta de entrega: o que o entregador precisa ler de relance. Endereço
+ * em letra grande e com mais linhas; telefone para ligar se não achar o
+ * endereço; data/horário discretos para conferir o pedido. Sem produtos.
+ */
+export function gerarZplEntrega(order: ParsedOrder, formato: FormatoPedido = FORMATO_PEDIDO): string {
+  const { pw, ll, margem, topo, espacoLinhas } = formato;
+  const largura = pw - margem * 2;
+  // Proporções a partir do formato: nome e endereço maiores que na etiqueta completa
+  const fonteNome = Math.round(formato.fonteNome * 1.2);
+  const fonteEndereco = Math.round(formato.fonteDados * 1.5);
+  const fonteRodape = Math.round(formato.fonteDados * 1.1);
+
+  const saida: string[] = ["^XA", "^SZ2", `^PW${pw}`, `^LL${ll}`, "^CI28"];
+  const texto = (x: number, y: number, corpo: number, t: string, larguraCampo: number, alinhar = "L") =>
+    saida.push(`^FO${x},${y}^A0N,${corpo},${corpo}^FB${larguraCampo},1,0,${alinhar},0^FD${t}^FS`);
+
+  let y = topo;
+  texto(margem, y, fonteNome, nomeQueCabe(order.cliente, fonteNome, largura), largura);
+  y += fonteNome + espacoLinhas + 6;
+
+  // Rodapé fixo no pé da etiqueta; o endereço usa todo o espaço entre os dois
+  const yRodape = ll - topo - fonteRodape;
+  const yDivisor = yRodape - 8;
+  const passo = fonteEndereco + espacoLinhas;
+  const maxLinhas = Math.max(1, Math.floor((yDivisor - 4 - y + espacoLinhas) / passo));
+  const endereco = zplEscape(order.endereco) || "(sem endereço)";
+  for (const t of quebrarTexto(endereco, fonteEndereco, largura, maxLinhas)) {
+    texto(margem, y, fonteEndereco, t, largura);
+    y += passo;
+  }
+
+  saida.push(`^FO${margem},${yDivisor}^GB${largura},2,2,B,0^FS`);
+  const horario = extractHorario(stripCaixas(order.observacao));
+  const dataHora = [diaMes(order.dataEntrega), horario].filter(Boolean).join(" - ");
+  const larguraDataHora = dataHora ? Math.ceil(larguraTexto(dataHora, fonteRodape)) + 4 : 0;
+  if (order.telefone) {
+    texto(margem, yRodape, fonteRodape, truncar(zplEscape(order.telefone), fonteRodape, largura - larguraDataHora - 12), largura - larguraDataHora - 12);
+  }
+  if (dataHora) {
+    texto(pw - margem - larguraDataHora, yRodape, fonteRodape, dataHora, larguraDataHora, "R");
   }
 
   saida.push("^PQ1", "^XZ");
