@@ -85,7 +85,7 @@ function larguraCaractere(ch: string): number {
 }
 
 /** Largura estimada do texto em dots. */
-function larguraTexto(texto: string, fonte: number): number {
+export function larguraTexto(texto: string, fonte: number): number {
   let soma = 0;
   for (const ch of texto) soma += larguraCaractere(ch);
   return soma * fonte;
@@ -95,7 +95,7 @@ function larguraTexto(texto: string, fonte: number): number {
 const RETICENCIAS = "...";
 
 /** Corta o texto (com reticências) até caber na largura. */
-function truncar(texto: string, fonte: number, largura: number): string {
+export function truncar(texto: string, fonte: number, largura: number): string {
   if (larguraTexto(texto, fonte) <= largura) return texto;
   let t = texto;
   while (t && larguraTexto(t + RETICENCIAS, fonte) > largura) t = t.slice(0, -1);
@@ -146,7 +146,7 @@ export function quebrarTexto(texto: string, fonte: number, largura: number, maxL
 }
 
 /** ^ e ~ são caracteres de controle ZPL; emojis não existem na fonte da impressora. */
-function zplEscape(texto: string): string {
+export function zplEscape(texto: string): string {
   return texto
     .replace(/[\^~]/g, " ")
     .replace(/[\r\n]/g, " ")

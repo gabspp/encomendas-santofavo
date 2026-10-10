@@ -1,29 +1,43 @@
-// Etiqueta de entrega desenhada como imagem — layout "Etiqueta 2a - Impressao"
-// (claude.ai/design, projeto da etiqueta de entrega). A Zebra não tem as fontes
-// da marca (Pipo, Fig Grotesk) nem o logo, então o navegador desenha a etiqueta
-// num canvas do tamanho exato do rolo (60x40 mm a 203 dpi = 480x320 pontos),
-// converte para 1 bit e envia como gráfico ^GF. O resto do caminho (fila +
-// agente do PC-26) é o mesmo da etiqueta em texto.
+// Etiqueta de entrega — layout "Etiqueta 2a - Impressao" (claude.ai/design).
 //
-//   ENTREGA                     sáb 10/10 · 11:00
+// Híbrida: a parte de marca vai como imagem e os dados como texto da Zebra.
+// - Imagem (^GF): "ENTREGA", nome em Pipo, as réguas e o logo. A Zebra não tem
+//   essas fontes nem o logo, então o navegador desenha num canvas do tamanho
+//   exato do rolo (60x40 mm a 203 dpi = 480x320 pontos) e converte para 1 bit.
+// - Texto da impressora (^A0): data/horário, endereço e telefone. Na primeira
+//   impressão tudo em Fig Grotesk, o "86" do endereço saiu ambíguo (números
+//   arredondados, letra pequena, rasterizado). A fonte da Zebra é desenhada
+//   pela própria impressora: números nítidos e inconfundíveis.
+//
+//   ENTREGA                     sáb 10/10 - 11:00   ← data em ^A0
 //   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-//   Nome do Cliente                      (Pipo 42, até 2 linhas)
-//   Endereço completo quebrando em        (Fig Grotesk 21)
+//   Nome do Cliente                      (Pipo 42, até 2 linhas, imagem)
+//   Endereço completo quebrando em        (^A0, quantas linhas couberem)
 //   quantas linhas couberem...
 //   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-//   (21) 98871-4247                 [Santo Favo]
+//   (21) 98871-4247                 [Santo Favo]   ← telefone em ^A0
 
 import type { ParsedOrder } from "@/types";
 import { extractHorario, stripCaixas } from "@/utils/notion";
+import { quebrarTexto, truncar, zplEscape } from "@/lib/zpl/etiqueta-pedido";
 
 const W = 480;
 const H = 320;
 const MARGEM = 20;
 const FONTE_TITULO = "Pipo";
 const FONTE_CORPO = "Fig Grotesk";
-/** Pixel vira ponto preto abaixo deste brilho (0–255). Um pouco acima de 128
- * para o texto antialiasado não afinar na impressão térmica. */
+/** Pixel vira ponto preto abaixo deste brilho (0–255). */
 const LIMIAR = 165;
+
+/** Corpo da fonte da Zebra (^A0) para cada dado, em pontos. */
+const ZPL_DATA = 26;
+const ZPL_ENDERECO = 27;
+const ZPL_TELEFONE = 27;
+const ESPACO_LINHAS = 3;
+/** A estimativa de largura de caractere (etiqueta-pedido.ts) foi medida em
+ * letra menor; com corpo 26–27 ela fica otimista. Quebra com 10% de folga:
+ * texto que passa do ^FB sai sobreposto (borrão) na Zebra. */
+const FOLGA = 0.9;
 
 const DIAS = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
 
@@ -56,16 +70,14 @@ function carregarRecursos(): Promise<HTMLImageElement> {
   return recursos;
 }
 
-// ── Texto ────────────────────────────────────────────────────────────────────
+// ── Texto no canvas (só o nome) ──────────────────────────────────────────────
 
 const RETICENCIAS = "…";
 
-/** Quebra em linhas que caibam em `largura`; a última leva reticências se sobrar texto. */
-function quebrar(ctx: CanvasRenderingContext2D, texto: string, largura: number, maxLinhas: number): string[] {
-  const palavras = texto.split(/\s+/).filter(Boolean);
+function quebrarCanvas(ctx: CanvasRenderingContext2D, texto: string, largura: number, maxLinhas: number): string[] {
   const linhas: string[] = [];
   let atual = "";
-  for (const p of palavras) {
+  for (const p of texto.split(/\s+/).filter(Boolean)) {
     const tentativa = atual ? `${atual} ${p}` : p;
     if (ctx.measureText(tentativa).width <= largura || !atual) atual = tentativa;
     else {
@@ -83,22 +95,23 @@ function quebrar(ctx: CanvasRenderingContext2D, texto: string, largura: number, 
   return mantidas;
 }
 
-/** Remove emojis/controle; a fonte não tem esses glifos. */
-function limpar(t: string): string {
-  return t.replace(/[^ -ɏ–—·]/g, "").replace(/\s+/g, " ").trim();
-}
-
 /** Nome em até 2 linhas; se não couber, tenta primeiro + último nome. */
 function nomeQueCabe(ctx: CanvasRenderingContext2D, nome: string, largura: number): string[] {
-  const linhas = quebrar(ctx, nome, largura, 2);
+  const linhas = quebrarCanvas(ctx, nome, largura, 2);
   if (!linhas[linhas.length - 1].endsWith(RETICENCIAS)) return linhas;
   const p = nome.split(" ");
-  return p.length > 2 ? quebrar(ctx, `${p[0]} ${p[p.length - 1]}`, largura, 2) : linhas;
+  return p.length > 2 ? quebrarCanvas(ctx, `${p[0]} ${p[p.length - 1]}`, largura, 2) : linhas;
 }
 
-// ── Desenho ──────────────────────────────────────────────────────────────────
+// ── Montagem ─────────────────────────────────────────────────────────────────
 
-export async function desenharEtiquetaEntrega(order: ParsedOrder): Promise<HTMLCanvasElement> {
+interface Etiqueta {
+  canvas: HTMLCanvasElement;
+  /** Comandos ^A0 sobrepostos à imagem (data, endereço, telefone). */
+  textos: string[];
+}
+
+export async function montarEtiquetaEntrega(order: ParsedOrder): Promise<Etiqueta> {
   const logo = await carregarRecursos();
   const canvas = document.createElement("canvas");
   canvas.width = W;
@@ -109,27 +122,34 @@ export async function desenharEtiquetaEntrega(order: ParsedOrder): Promise<HTMLC
   ctx.fillStyle = "#000";
   ctx.textBaseline = "alphabetic";
   const largura = W - MARGEM * 2;
+  const textos: string[] = [];
+  const zpl = (x: number, y: number, corpo: number, t: string, larguraCampo: number, alinhar = "L") =>
+    textos.push(`^FO${x},${y}^A0N,${corpo},${corpo}^FB${larguraCampo},1,0,${alinhar},0^FD${t}^FS`);
 
   const isRetirada = order.entrega.startsWith("Retirada");
 
-  // ── Faixa de cima: tipo + data/horário ──
+  // ── Faixa de cima: tipo (imagem) + data/horário (Zebra) ──
+  // Fig Grotesk só tem Regular: o contorno faz o papel do negrito do design
   ctx.font = `700 24px "${FONTE_CORPO}"`;
   ctx.letterSpacing = "2.9px"; // 0.12em
-  // Fig Grotesk só tem Regular: o contorno faz o papel do negrito do design
   ctx.strokeStyle = "#000";
   ctx.lineWidth = 1.2;
   ctx.lineJoin = "round";
-  const negrito = (t: string, x: number, yy: number) => { ctx.fillText(t, x, yy); ctx.strokeText(t, x, yy); };
-  ctx.textAlign = "left";
-  negrito(isRetirada ? "RETIRADA" : "ENTREGA", MARGEM, 38);
-  ctx.letterSpacing = "0.5px";
-  ctx.textAlign = "right";
-  const horario = extractHorario(stripCaixas(order.observacao));
-  negrito([dataCurta(order.dataEntrega), horario].filter(Boolean).join(" · "), W - MARGEM, 38);
+  const tipo = isRetirada ? "RETIRADA" : "ENTREGA";
+  ctx.fillText(tipo, MARGEM, 38);
+  ctx.strokeText(tipo, MARGEM, 38);
   ctx.letterSpacing = "0px";
+  const larguraTipo = ctx.measureText(tipo).width + 2.9 * tipo.length;
+
+  const horario = extractHorario(stripCaixas(order.observacao));
+  const dataHora = zplEscape([dataCurta(order.dataEntrega), horario].filter(Boolean).join(" - "));
+  if (dataHora) {
+    const x = Math.ceil(MARGEM + larguraTipo + 12);
+    zpl(x, 16, ZPL_DATA, truncar(dataHora, ZPL_DATA, (W - MARGEM - x) * FOLGA), W - MARGEM - x, "R");
+  }
   ctx.fillRect(MARGEM, 49, largura, 3);
 
-  // ── Faixa de baixo: telefone + logo ──
+  // ── Faixa de baixo: telefone (Zebra) + logo (imagem) ──
   const yLinhaBaixo = H - 49;
   ctx.fillRect(MARGEM, yLinhaBaixo, largura, 3);
   const alturaLogo = 26;
@@ -147,46 +167,37 @@ export async function desenharEtiquetaEntrega(order: ParsedOrder): Promise<HTMLC
   ctx.drawImage(tmp, W - MARGEM - larguraLogo, yLogo);
 
   if (order.telefone) {
-    ctx.font = `400 22px "${FONTE_CORPO}"`;
-    ctx.letterSpacing = "0.4px";
-    ctx.textAlign = "left";
     const larguraTel = largura - larguraLogo - 12;
-    const [tel] = quebrar(ctx, limpar(order.telefone), larguraTel, 1);
-    ctx.fillText(tel, MARGEM, yLogo + 21);
-    ctx.letterSpacing = "0px";
+    zpl(MARGEM, yLogo, ZPL_TELEFONE, truncar(zplEscape(order.telefone), ZPL_TELEFONE, larguraTel * FOLGA), larguraTel);
   }
 
-  // ── Corpo: nome + endereço ──
-  ctx.textAlign = "left";
+  // ── Corpo: nome (imagem) + endereço (Zebra) ──
   let y = 64;
   ctx.font = `700 42px "${FONTE_TITULO}"`;
-  const alturaNome = 44; // line-height 1.05
-  for (const linha of nomeQueCabe(ctx, limpar(order.cliente || "—"), largura)) {
+  for (const linha of nomeQueCabe(ctx, order.cliente.replace(/\s+/g, " ").trim() || "—", largura)) {
     ctx.fillText(linha, MARGEM, y + 34);
-    y += alturaNome;
+    y += 44; // line-height 1.05
   }
-  y += 8;
+  y += 10;
 
-  ctx.font = `400 ${isRetirada ? 22 : 21}px "${FONTE_CORPO}"`;
-  const alturaLinha = 26; // line-height 1.22
-  const texto = isRetirada ? "Retirada na loja" : limpar(order.endereco) || "(sem endereço)";
-  const maxLinhas = Math.max(1, Math.floor((yLinhaBaixo - 6 - y) / alturaLinha));
-  for (const linha of quebrar(ctx, texto, largura, maxLinhas)) {
-    ctx.fillText(linha, MARGEM, y + 19);
-    y += alturaLinha;
+  const texto = isRetirada ? "Retirada na loja" : zplEscape(order.endereco) || "(sem endereço)";
+  const passo = ZPL_ENDERECO + ESPACO_LINHAS;
+  const maxLinhas = Math.max(1, Math.floor((yLinhaBaixo - 6 - y + ESPACO_LINHAS) / passo));
+  for (const linha of quebrarTexto(texto, ZPL_ENDERECO, largura * FOLGA, maxLinhas)) {
+    zpl(MARGEM, y, ZPL_ENDERECO, linha, largura);
+    y += passo;
   }
 
-  return canvas;
+  return { canvas, textos };
 }
 
 // ── Canvas → ZPL ^GF ─────────────────────────────────────────────────────────
 
 /**
  * Converte o canvas em ^GFA com a compressão simples do ZPL: linha igual à
- * anterior vira ":" e zeros no fim da linha viram ",". Reduz o tamanho de
- * ~38 KB para alguns KB numa etiqueta com bastante branco.
+ * anterior vira ":" e zeros no fim da linha viram ",".
  */
-export function canvasParaZpl(canvas: HTMLCanvasElement): string {
+export function canvasParaGf(canvas: HTMLCanvasElement): string {
   const { width, height } = canvas;
   const dados = canvas.getContext("2d")!.getImageData(0, 0, width, height).data;
   const bytesPorLinha = Math.ceil(width / 8);
@@ -215,14 +226,16 @@ export function canvasParaZpl(canvas: HTMLCanvasElement): string {
     const semZeros = hex.replace(/(00)+$/, "");
     corpo += semZeros.length === hex.length ? hex : semZeros + ",";
   }
+  return `^FO0,0^GFA,${total},${total},${bytesPorLinha},${corpo}^FS`;
+}
 
+export async function gerarZplEntregaImagem(order: ParsedOrder): Promise<string> {
+  const { canvas, textos } = await montarEtiquetaEntrega(order);
   return [
-    "^XA", `^PW${width}`, `^LL${height}`,
-    `^FO0,0^GFA,${total},${total},${bytesPorLinha},${corpo}^FS`,
+    "^XA", "^SZ2", `^PW${W}`, `^LL${H}`, "^CI28",
+    canvasParaGf(canvas),
+    ...textos,
     "^PQ1", "^XZ",
   ].join("\n");
 }
 
-export async function gerarZplEntregaImagem(order: ParsedOrder): Promise<string> {
-  return canvasParaZpl(await desenharEtiquetaEntrega(order));
-}
