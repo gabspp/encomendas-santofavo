@@ -11,7 +11,8 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY ?? "",
 );
 
-// Única impressora de etiquetas fica na loja 26
+// Única impressora de etiquetas fica na loja 26. Limite de 60 mil caracteres:
+// a etiqueta de entrega vai como imagem ^GF (~10–20 mil).
 const LOJA_IMPRESSORA = "26";
 
 // Não é rota própria (prefixo "_"): é chamada por api/update.ts com
@@ -24,7 +25,7 @@ export async function imprimirEtiqueta(req: VercelRequest, res: VercelResponse) 
   if (authError || !auth.user) return res.status(401).json({ error: "Não autenticado" });
 
   const { zpl } = req.body ?? {};
-  if (typeof zpl !== "string" || !zpl.startsWith("^XA") || zpl.length > 8000) {
+  if (typeof zpl !== "string" || !zpl.startsWith("^XA") || zpl.length > 60000) {
     return res.status(400).json({ error: "ZPL inválido" });
   }
 

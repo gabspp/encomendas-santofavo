@@ -598,7 +598,7 @@ REGRAS IMPORTANTES:
       if (authError || !auth.user) return json(401, { error: "Não autenticado" });
 
       const { zpl } = body;
-      if (typeof zpl !== "string" || !zpl.startsWith("^XA") || zpl.length > 8000) {
+      if (typeof zpl !== "string" || !zpl.startsWith("^XA") || zpl.length > 60000) {
         return json(400, { error: "ZPL inválido" });
       }
       const { data: loja, error: lojaError } = await supabaseAdmin

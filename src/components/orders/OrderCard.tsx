@@ -3,6 +3,7 @@ import { Clock, Share2, Loader2, Printer, Check } from "lucide-react";
 import { toPng } from "html-to-image";
 import { supabase } from "@/lib/supabase";
 import { gerarZplPedido, gerarZplEntrega } from "@/lib/zpl/etiqueta-pedido";
+import { gerarZplEntregaImagem } from "@/lib/zpl/etiqueta-entrega-imagem";
 import type { ParsedOrder, ProductItem, OrderStatus } from "@/types";
 import { formatBrDateWithDay, extractHorario, stripHorario, extractCaixasStr, stripCaixas } from "@/utils/notion";
 import { useAuth } from "@/contexts/AuthContext";
@@ -372,6 +373,17 @@ export function OrderCard({ order, onStatusChange, onEntregaChange, onDateChange
     return () => document.removeEventListener("mousedown", fechar);
   }, [printMenu]);
 
+  // Etiqueta de entrega no layout da marca (imagem); se o desenho falhar
+  // (fonte/logo não carregou), cai para a versão em texto da impressora.
+  async function zplEntrega(): Promise<string> {
+    try {
+      return await gerarZplEntregaImagem(order);
+    } catch (err) {
+      console.error("Etiqueta em imagem falhou, usando texto:", err);
+      return gerarZplEntrega(order);
+    }
+  }
+
   async function handlePrint(tipo: "completa" | "entrega") {
     setPrintMenu(false);
     if (printState === "sending") return;
@@ -386,7 +398,7 @@ export function OrderCard({ order, onStatusChange, onEntregaChange, onDateChange
         },
         body: JSON.stringify({
           action: "etiqueta",
-          zpl: tipo === "entrega" ? gerarZplEntrega(order) : gerarZplPedido(order),
+          zpl: tipo === "entrega" ? await zplEntrega() : gerarZplPedido(order),
         }),
       });
       if (!res.ok) throw new Error(await res.text());
