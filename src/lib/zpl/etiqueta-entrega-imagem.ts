@@ -180,7 +180,15 @@ export async function montarEtiquetaEntrega(order: ParsedOrder): Promise<Etiquet
   }
   y += 10;
 
-  const texto = isRetirada ? "Retirada na loja" : zplEscape(order.endereco);
+  if (isRetirada) {
+    // Loja de retirada em destaque, na fonte da Zebra (número sem ambiguidade)
+    const loja = order.entrega.match(/\d+/)?.[0];
+    const corpo = 34;
+    zpl(MARGEM, y, corpo, truncar(loja ? `Retirada na Loja ${loja}` : "Retirada na loja", corpo, largura * FOLGA), largura);
+    return { canvas, textos };
+  }
+
+  const texto = zplEscape(order.endereco);
   const passo = ZPL_ENDERECO + ESPACO_LINHAS;
   const maxLinhas = Math.max(1, Math.floor((yLinhaBaixo - 6 - y + ESPACO_LINHAS) / passo));
   for (const linha of quebrarTexto(texto, ZPL_ENDERECO, largura * FOLGA, maxLinhas)) {
