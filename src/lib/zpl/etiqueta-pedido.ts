@@ -272,7 +272,7 @@ export function gerarZplEntrega(order: ParsedOrder, formato: FormatoPedido = FOR
   const yDivisor = yRodape - 8;
   const passo = fonteEndereco + espacoLinhas;
   const maxLinhas = Math.max(1, Math.floor((yDivisor - 4 - y + espacoLinhas) / passo));
-  const endereco = zplEscape(order.endereco) || "(sem endereço)";
+  const endereco = zplEscape(order.endereco);
   for (const t of quebrarTexto(endereco, fonteEndereco, largura, maxLinhas)) {
     texto(margem, y, fonteEndereco, t, largura);
     y += passo;

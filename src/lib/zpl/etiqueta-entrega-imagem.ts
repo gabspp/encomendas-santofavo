@@ -180,7 +180,7 @@ export async function montarEtiquetaEntrega(order: ParsedOrder): Promise<Etiquet
   }
   y += 10;
 
-  const texto = isRetirada ? "Retirada na loja" : zplEscape(order.endereco) || "(sem endereço)";
+  const texto = isRetirada ? "Retirada na loja" : zplEscape(order.endereco);
   const passo = ZPL_ENDERECO + ESPACO_LINHAS;
   const maxLinhas = Math.max(1, Math.floor((yLinhaBaixo - 6 - y + ESPACO_LINHAS) / passo));
   for (const linha of quebrarTexto(texto, ZPL_ENDERECO, largura * FOLGA, maxLinhas)) {
