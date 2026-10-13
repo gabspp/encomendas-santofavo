@@ -361,8 +361,8 @@ export function OrderCard({ order, onStatusChange, onEntregaChange, onDateChange
   const [printState, setPrintState] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const [printMenu, setPrintMenu] = useState(false);
   const printMenuRef = useRef<HTMLDivElement>(null);
-  // Retirada não tem endereço: vai direto para a etiqueta completa
-  const temEtiquetaEntrega = order.entrega.startsWith("Entrega") && !!order.endereco;
+  // O layout de entrega também cobre retirada ("Retirada na loja")
+  const isRetirada = order.entrega.startsWith("Retirada");
 
   useEffect(() => {
     if (!printMenu) return;
@@ -490,7 +490,7 @@ export function OrderCard({ order, onStatusChange, onEntregaChange, onDateChange
           <div data-share-exclude className="flex items-center gap-2.5">
             <div ref={printMenuRef} className="relative flex">
             <button
-              onClick={() => temEtiquetaEntrega ? setPrintMenu((v) => !v) : void handlePrint("completa")}
+              onClick={() => setPrintMenu((v) => !v)}
               disabled={printState === "sending"}
               title={
                 printState === "sent" ? "Etiqueta enviada para a impressora"
@@ -520,8 +520,8 @@ export function OrderCard({ order, onStatusChange, onEntregaChange, onDateChange
                   onClick={() => void handlePrint("entrega")}
                   className="w-full px-3 py-2 text-xs text-gray-700 hover:bg-gray-50 text-left cursor-pointer"
                 >
-                  <span className="font-semibold block">Etiqueta de entrega</span>
-                  <span className="text-gray-400">nome, endereço e telefone</span>
+                  <span className="font-semibold block">Etiqueta de {isRetirada ? "retirada" : "entrega"}</span>
+                  <span className="text-gray-400">{isRetirada ? "nome, data e telefone" : "nome, endereço e telefone"}</span>
                 </button>
               </div>
             )}
