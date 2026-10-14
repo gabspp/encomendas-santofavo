@@ -373,14 +373,14 @@ export function OrderCard({ order, onStatusChange, onEntregaChange, onDateChange
     return () => document.removeEventListener("mousedown", fechar);
   }, [printMenu]);
 
-  // Etiqueta de entrega no layout da marca (imagem); se o desenho falhar
-  // (fonte/logo não carregou), cai para a versão em texto da impressora.
-  async function zplEntrega(): Promise<string> {
+  // Etiquetas no layout da marca (imagem + texto da Zebra); se o desenho
+  // falhar (fonte/logo não carregou), cai para a versão só em texto.
+  async function zplEtiqueta(tipo: "completa" | "entrega"): Promise<string> {
     try {
-      return await gerarZplEntregaImagem(order);
+      return await gerarZplEntregaImagem(order, tipo);
     } catch (err) {
       console.error("Etiqueta em imagem falhou, usando texto:", err);
-      return gerarZplEntrega(order);
+      return tipo === "entrega" ? gerarZplEntrega(order) : gerarZplPedido(order);
     }
   }
 
@@ -398,7 +398,7 @@ export function OrderCard({ order, onStatusChange, onEntregaChange, onDateChange
         },
         body: JSON.stringify({
           action: "etiqueta",
-          zpl: tipo === "entrega" ? await zplEntrega() : gerarZplPedido(order),
+          zpl: await zplEtiqueta(tipo),
         }),
       });
       if (!res.ok) throw new Error(await res.text());

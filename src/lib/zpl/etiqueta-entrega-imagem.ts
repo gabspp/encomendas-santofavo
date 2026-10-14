@@ -19,7 +19,7 @@
 
 import type { ParsedOrder } from "@/types";
 import { extractHorario, stripCaixas } from "@/utils/notion";
-import { quebrarTexto, truncar, zplEscape } from "@/lib/zpl/etiqueta-pedido";
+import { linhasProdutos, quebrarTexto, truncar, zplEscape } from "@/lib/zpl/etiqueta-pedido";
 
 const W = 480;
 const H = 320;
@@ -95,12 +95,12 @@ function quebrarCanvas(ctx: CanvasRenderingContext2D, texto: string, largura: nu
   return mantidas;
 }
 
-/** Nome em até 2 linhas; se não couber, tenta primeiro + último nome. */
-function nomeQueCabe(ctx: CanvasRenderingContext2D, nome: string, largura: number): string[] {
-  const linhas = quebrarCanvas(ctx, nome, largura, 2);
+/** Nome em até `maxLinhas`; se não couber, tenta primeiro + último nome. */
+function nomeQueCabe(ctx: CanvasRenderingContext2D, nome: string, largura: number, maxLinhas: number): string[] {
+  const linhas = quebrarCanvas(ctx, nome, largura, maxLinhas);
   if (!linhas[linhas.length - 1].endsWith(RETICENCIAS)) return linhas;
   const p = nome.split(" ");
-  return p.length > 2 ? quebrarCanvas(ctx, `${p[0]} ${p[p.length - 1]}`, largura, 2) : linhas;
+  return p.length > 2 ? quebrarCanvas(ctx, `${p[0]} ${p[p.length - 1]}`, largura, maxLinhas) : linhas;
 }
 
 // ── Montagem ─────────────────────────────────────────────────────────────────
@@ -111,7 +111,15 @@ interface Etiqueta {
   textos: string[];
 }
 
-export async function montarEtiquetaEntrega(order: ParsedOrder): Promise<Etiqueta> {
+/**
+ * "entrega": nome grande + endereço (para colar no pacote).
+ * "completa": mesmo cabeçalho/rodapé, nome em 1 linha, endereço em até 2
+ * linhas e a lista de produtos (para a produção/conferência).
+ */
+export type TipoEtiqueta = "entrega" | "completa";
+
+export async function montarEtiquetaEntrega(order: ParsedOrder, tipoEtiqueta: TipoEtiqueta = "entrega"): Promise<Etiqueta> {
+  const completa = tipoEtiqueta === "completa";
   const logo = await carregarRecursos();
   const canvas = document.createElement("canvas");
   canvas.width = W;
@@ -172,13 +180,20 @@ export async function montarEtiquetaEntrega(order: ParsedOrder): Promise<Etiquet
   }
 
   // ── Corpo: nome (imagem) + endereço (Zebra) ──
-  let y = 64;
-  ctx.font = `700 42px "${FONTE_TITULO}"`;
-  for (const linha of nomeQueCabe(ctx, order.cliente.replace(/\s+/g, " ").trim() || "—", largura)) {
-    ctx.fillText(linha, MARGEM, y + 34);
-    y += 44; // line-height 1.05
+  let y = completa ? 60 : 64;
+  const corpoNome = completa ? 34 : 42;
+  ctx.font = `700 ${corpoNome}px "${FONTE_TITULO}"`;
+  const nome = order.cliente.replace(/\s+/g, " ").trim() || "—";
+  for (const linha of nomeQueCabe(ctx, nome, largura, completa ? 1 : 2)) {
+    ctx.fillText(linha, MARGEM, y + Math.round(corpoNome * 0.81));
+    y += Math.round(corpoNome * 1.05);
   }
-  y += 10;
+  y += completa ? 6 : 10;
+
+  if (completa) {
+    desenharCorpoCompleto(order, isRetirada, y, yLinhaBaixo, largura, ctx, zpl);
+    return { canvas, textos };
+  }
 
   if (isRetirada) {
     // Loja de retirada em destaque, na fonte da Zebra (número sem ambiguidade)
@@ -197,6 +212,52 @@ export async function montarEtiquetaEntrega(order: ParsedOrder): Promise<Etiquet
   }
 
   return { canvas, textos };
+}
+
+// ── Corpo da etiqueta completa: endereço curto + produtos ────────────────────
+
+const ZPL_DADOS_COMPLETA = 23;
+const ZPL_PRODUTOS = 24;
+
+function desenharCorpoCompleto(
+  order: ParsedOrder,
+  isRetirada: boolean,
+  yInicio: number,
+  yLinhaBaixo: number,
+  largura: number,
+  ctx: CanvasRenderingContext2D,
+  zpl: (x: number, y: number, corpo: number, t: string, larguraCampo: number) => void,
+) {
+  let y = yInicio;
+
+  if (isRetirada) {
+    const loja = order.entrega.match(/\d+/)?.[0];
+    zpl(MARGEM, y, ZPL_DADOS_COMPLETA, loja ? `Retirada na Loja ${loja}` : "Retirada na loja", largura);
+    y += ZPL_DADOS_COMPLETA + ESPACO_LINHAS;
+  } else {
+    for (const linha of quebrarTexto(zplEscape(order.endereco), ZPL_DADOS_COMPLETA, largura * FOLGA, 2)) {
+      zpl(MARGEM, y, ZPL_DADOS_COMPLETA, linha, largura);
+      y += ZPL_DADOS_COMPLETA + ESPACO_LINHAS;
+    }
+  }
+
+  // Régua fina separando dados do cliente dos produtos
+  y += 3;
+  ctx.fillRect(MARGEM, y, largura, 2);
+  y += 7;
+
+  const passo = ZPL_PRODUTOS + ESPACO_LINHAS;
+  const cabem = Math.max(0, Math.floor((yLinhaBaixo - 4 - y + ESPACO_LINHAS) / passo));
+  const produtos = linhasProdutos(order);
+  const mostrar = produtos.length > cabem ? Math.max(0, cabem - 1) : produtos.length;
+  for (const p of produtos.slice(0, mostrar)) {
+    zpl(MARGEM, y, ZPL_PRODUTOS, truncar(p, ZPL_PRODUTOS, largura * FOLGA), largura);
+    y += passo;
+  }
+  if (produtos.length > mostrar && cabem > 0) {
+    const resto = produtos.length - mostrar;
+    zpl(MARGEM, y, ZPL_PRODUTOS, `+${resto} ${resto === 1 ? "item" : "itens"}`, largura);
+  }
 }
 
 // ── Canvas → ZPL ^GF ─────────────────────────────────────────────────────────
@@ -237,8 +298,8 @@ export function canvasParaGf(canvas: HTMLCanvasElement): string {
   return `^FO0,0^GFA,${total},${total},${bytesPorLinha},${corpo}^FS`;
 }
 
-export async function gerarZplEntregaImagem(order: ParsedOrder): Promise<string> {
-  const { canvas, textos } = await montarEtiquetaEntrega(order);
+export async function gerarZplEntregaImagem(order: ParsedOrder, tipoEtiqueta: TipoEtiqueta = "entrega"): Promise<string> {
+  const { canvas, textos } = await montarEtiquetaEntrega(order, tipoEtiqueta);
   return [
     "^XA", "^SZ2", `^PW${W}`, `^LL${H}`, "^CI28",
     canvasParaGf(canvas),
