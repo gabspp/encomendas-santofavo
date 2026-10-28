@@ -14,6 +14,13 @@ export interface BarItem {
   quantity: number | string;
 }
 
+export interface BoloItem {
+  id: string;
+  name: string;
+  fatias: number | string;
+  inteiros: number | string;
+}
+
 export type StoreId = '248' | '26';
 
 // ── Constantes ─────────────────────────────────────────────────────────────────
@@ -44,6 +51,18 @@ export const mergeBars = (saved: BarItem[] | undefined): BarItem[] =>
     ...bar,
     quantity: saved?.find((s) => s.id === bar.id)?.quantity ?? 0,
   }));
+
+// Bolos são salvos junto das barrinhas (coluna `bars`), com id "bolo-*".
+export const INITIAL_BOLOS: BoloItem[] = [
+  { id: 'bolo-choco', name: 'Bolo de Chocolate', fatias: 0, inteiros: 0 },
+  { id: 'bolo-pdm',   name: 'Bolo de PDM',       fatias: 0, inteiros: 0 },
+];
+
+export const mergeBolos = (saved: unknown[] | undefined): BoloItem[] =>
+  INITIAL_BOLOS.map((bolo) => {
+    const s = saved?.find((x) => (x as BoloItem).id === bolo.id) as Partial<BoloItem> | undefined;
+    return { ...bolo, fatias: s?.fatias ?? 0, inteiros: s?.inteiros ?? 0 };
+  });
 
 // Mapeamento de id de estoque → FlavorId do Planejamento
 export const STOCK_TO_FLAVOR_MAP: Record<string, string> = {
@@ -108,6 +127,7 @@ export const generateReportText = (
   headers: string[],
   items: StockItem[],
   bars: BarItem[],
+  bolos: BoloItem[] = [],
 ): string => {
   const storeName = storeId === '248' ? 'Loja 248' : 'Loja 26';
   const grandTotal = calculateGrandTotal(items);

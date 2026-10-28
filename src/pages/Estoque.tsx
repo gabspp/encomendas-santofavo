@@ -3,7 +3,9 @@ import { Save, Share2, FileText, Loader2, X } from "lucide-react";
 import {
   INITIAL_ITEMS,
   INITIAL_BARS,
+  INITIAL_BOLOS,
   mergeBars,
+  mergeBolos,
   calculateTotals,
   calculateGrandTotal,
   generateReportText,
@@ -11,7 +13,7 @@ import {
   formatDateForInput,
   formatDateDisplay,
 } from "@/utils/estoque";
-import type { StockItem, BarItem, StoreId } from "@/utils/estoque";
+import type { StockItem, BarItem, BoloItem, StoreId } from "@/utils/estoque";
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -45,6 +47,7 @@ export default function Estoque() {
   const [headers, setHeaders] = useState<string[]>(getInitialHeaders());
   const [items, setItems] = useState<StockItem[]>(deepCloneItems(INITIAL_ITEMS));
   const [bars, setBars] = useState<BarItem[]>([...INITIAL_BARS]);
+  const [bolos, setBolos] = useState<BoloItem[]>([...INITIAL_BOLOS]);
 
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -83,6 +86,7 @@ export default function Estoque() {
         setHeaders(getInitialHeaders());
         setItems(deepCloneItems(INITIAL_ITEMS));
         setBars([...INITIAL_BARS]);
+        setBolos([...INITIAL_BOLOS]);
       } else {
         setHeaders(data.headers ?? getInitialHeaders());
         // Recalcular totais ao carregar
@@ -94,6 +98,7 @@ export default function Estoque() {
         );
         setItems(loaded);
         setBars(mergeBars(data.bars));
+        setBolos(mergeBolos(data.bars));
       }
     } catch {
       showToast("Erro ao carregar dados", "err");
@@ -139,6 +144,16 @@ export default function Estoque() {
     });
   }
 
+  function handleBolo(boloIdx: number, campo: "fatias" | "inteiros", raw: string) {
+    const num = parseInt(raw, 10);
+    const val = isNaN(num) ? "" : Math.max(0, num);
+    setBolos((prev) => {
+      const next = [...prev];
+      next[boloIdx] = { ...next[boloIdx], [campo]: val };
+      return next;
+    });
+  }
+
   function handleHeader(colIdx: number, value: string) {
     setHeaders((prev) => {
       const next = [...prev];
@@ -174,7 +189,7 @@ export default function Estoque() {
       const res = await fetch("/api/estoque", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ date: reportDate, storeId, headers, items, bars }),
+        body: JSON.stringify({ date: reportDate, storeId, headers, items, bars: [...bars, ...bolos] }),
       });
       if (!res.ok) throw new Error("Erro ao salvar");
       showToast("Salvo com sucesso!");
@@ -197,19 +212,19 @@ export default function Estoque() {
         await fetch("/api/estoque", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ date: reportDate, storeId, headers, items, bars }),
+          body: JSON.stringify({ date: reportDate, storeId, headers, items, bars: [...bars, ...bolos] }),
         });
       } catch {
         // silently ignore
       }
     }, 2000);
     return () => clearTimeout(autoSaveTimer.current);
-  }, [items, bars, headers]);
+  }, [items, bars, bolos, headers]);
 
   // ── Relatório ──────────────────────────────────────────────────────────────
 
   function handleReport() {
-    const text = generateReportText(storeId, headers, items, bars);
+    const text = generateReportText(storeId, headers, items, bars, bolos);
     setReportText(text);
     setShowReport(true);
   }
@@ -244,7 +259,8 @@ export default function Estoque() {
     const bodyTop = tableTop + headerH;
     const tableBottom = bodyTop + items.length * rowH + totalH;
     const barsTop = tableBottom + gapBars;
-    const H = barsTop + barsTitleH + bars.length * barRowH + PAD;
+    const bolosTop = barsTop + barsTitleH + bars.length * barRowH + gapBars;
+    const H = bolosTop + barsTitleH + bolos.length * barRowH + PAD;
 
     const canvas = document.createElement("canvas");
     canvas.width = W * SCALE;
@@ -323,6 +339,26 @@ export default function Estoque() {
       ctx.textAlign = "right";
       ctx.font = "700 13px Arial, sans-serif";
       ctx.fillText(String(Number(bar.quantity) || 0), PAD + tableW, y + barRowH / 2);
+      hline(y + barRowH);
+    });
+
+    // Bolos
+    ctx.textAlign = "left";
+    ctx.fillStyle = "#374151";
+    ctx.font = "700 13px Arial, sans-serif";
+    ctx.fillText("Estoque de Bolos", PAD, bolosTop + barsTitleH / 2);
+    bolos.forEach((bolo, bi) => {
+      const y = bolosTop + barsTitleH + bi * barRowH;
+      ctx.textAlign = "left";
+      ctx.fillStyle = "#374151";
+      ctx.font = "13px Arial, sans-serif";
+      ctx.fillText(bolo.name, PAD, y + barRowH / 2);
+      ctx.textAlign = "right";
+      ctx.font = "700 13px Arial, sans-serif";
+      ctx.fillText(
+        `${Number(bolo.inteiros) || 0} inteiro(s)  ·  ${Number(bolo.fatias) || 0} fatia(s)`,
+        PAD + tableW, y + barRowH / 2,
+      );
       hline(y + barRowH);
     });
 
@@ -520,6 +556,39 @@ export default function Estoque() {
                 onFocus={(e) => (e.target as HTMLInputElement).select()}
                 className="w-20 text-center text-sm border border-gray-200 rounded-lg px-2 py-1.5 outline-none focus:border-brand-brown transition-colors tabular-nums"
               />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Bolos ────────────────────────────────────────────────────────────── */}
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+        <h2 className="text-sm font-bold text-gray-800 uppercase tracking-wide mb-3">
+          Estoque de Bolos
+        </h2>
+        <div className="flex justify-end gap-2 pb-1 text-[11px] font-semibold text-gray-500 uppercase tracking-wide">
+          <span className="w-20 text-center">Inteiro</span>
+          <span className="w-20 text-center">Fatias</span>
+        </div>
+        <div className="divide-y divide-gray-100">
+          {bolos.map((bolo, bi) => (
+            <div key={bolo.id} className="flex items-center justify-between gap-2 py-2.5">
+              <span className="text-sm text-gray-700">{bolo.name}</span>
+              <div className="flex gap-2">
+                {(["inteiros", "fatias"] as const).map((campo) => (
+                  <input
+                    key={campo}
+                    type="number"
+                    min="0"
+                    value={bolo[campo] === 0 || bolo[campo] === "" ? "" : bolo[campo]}
+                    placeholder="0"
+                    aria-label={`${bolo.name} — ${campo === "inteiros" ? "inteiro" : "fatias"}`}
+                    onChange={(e) => handleBolo(bi, campo, e.target.value)}
+                    onFocus={(e) => (e.target as HTMLInputElement).select()}
+                    className="w-20 text-center text-sm border border-gray-200 rounded-lg px-2 py-1.5 outline-none focus:border-brand-brown transition-colors tabular-nums"
+                  />
+                ))}
+              </div>
             </div>
           ))}
         </div>
