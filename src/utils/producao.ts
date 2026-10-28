@@ -207,6 +207,34 @@ export function gerarMensagem(
   return msg;
 }
 
+/**
+ * Produção concentrada na loja 26: as duas lojas são planejadas separadas,
+ * a 26 produz a soma e depois separa a parte da 248.
+ * Formato = mensagem da 26 com as quantidades somadas + bloco "Separar 248".
+ */
+export function gerarMensagemConcentrada(
+  ajustes26: Record<FlavorId, number>,
+  ajustes248: Record<FlavorId, number>,
+  date: string,
+  encomendasDLSem: number,
+  textoEncomendas: string,
+): string {
+  const soma = Object.fromEntries(
+    SABORES_IDS.map((id) => [id, (ajustes26[id] ?? 0) + (ajustes248[id] ?? 0)]),
+  ) as Record<FlavorId, number>;
+
+  let msg = gerarMensagem(soma, date, "26", encomendasDLSem, textoEncomendas);
+
+  msg += "\n\n--- Separar 248 ---\n\n";
+  for (const sabor of SABORES) {
+    const qty = ajustes248[sabor.id] ?? 0;
+    if (qty > 0) msg += `${sabor.id} - ${qty}\n`;
+  }
+  msg += `\nTotal: ${SABORES_IDS.reduce((s, id) => s + (ajustes248[id] ?? 0), 0)}`;
+
+  return msg;
+}
+
 // ─── Parser de texto ──────────────────────────────────────────────────────────
 
 /**

@@ -10,6 +10,7 @@ import {
   aplicarTransferencia,
   calcularProducao,
   parseTextToFlavors,
+  gerarMensagemConcentrada,
 } from "@/utils/producao";
 import type { FlavorId, FlavorData, OrderDetail, TransferenciaAjuste } from "@/utils/producao";
 import type { StoreId } from "@/utils/estoque";
@@ -227,6 +228,7 @@ export default function PlanejamentoLojas() {
   const [loadingSobras, setLoadingSobras] = useState(false);
   const [copied26, setCopied26] = useState(false);
   const [copied248, setCopied248] = useState(false);
+  const [copiedConc, setCopiedConc] = useState(false);
   const [toast, setToast] = useState<{ msg: string; type: "ok" | "err" } | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
@@ -548,6 +550,21 @@ export default function PlanejamentoLojas() {
     await navigator.clipboard.writeText(mensagem);
     if (storeId === "26") { setCopied26(true); setTimeout(() => setCopied26(false), 2000); }
     else { setCopied248(true); setTimeout(() => setCopied248(false), 2000); }
+  }
+
+  // Produção concentrada na 26: soma das duas lojas + quanto separar para a 248
+  const mensagemConcentrada = useMemo(() => {
+    const efetivos = (fd: Record<FlavorId, FlavorData>) =>
+      Object.fromEntries(SABORES_IDS.map((id) => [id, fd[id]?.ajuste ?? 0])) as Record<FlavorId, number>;
+    return gerarMensagemConcentrada(
+      efetivos(loja26.flavorData), efetivos(loja248.flavorData), date, encomendas26.DLSem, textoEncomendas,
+    );
+  }, [loja26.flavorData, loja248.flavorData, date, encomendas26.DLSem, textoEncomendas]);
+
+  async function handleCopiarConcentrada() {
+    await navigator.clipboard.writeText(mensagemConcentrada);
+    setCopiedConc(true);
+    setTimeout(() => setCopiedConc(false), 2000);
   }
 
   // ── Totais para sugestão de quantidade ───────────────────────────────────────
@@ -919,6 +936,29 @@ export default function PlanejamentoLojas() {
           />
         </div>
       ))}
+
+      {/* ── 8. Produção concentrada (26 produz tudo e separa a 248) ─────────── */}
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <h2 className="text-sm font-bold text-gray-800 uppercase tracking-wide">Mensagem — Produção concentrada</h2>
+            <p className="text-xs text-gray-400 mt-0.5">Loja 26 produz a soma das duas lojas e separa a parte da 248</p>
+          </div>
+          <button
+            onClick={() => void handleCopiarConcentrada()}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-brand-brown text-white hover:opacity-90 transition-opacity cursor-pointer shrink-0"
+          >
+            <Copy className="h-3.5 w-3.5" />
+            {copiedConc ? "Copiado!" : "Copiar"}
+          </button>
+        </div>
+        <textarea
+          value={mensagemConcentrada}
+          readOnly
+          rows={16}
+          className="w-full font-mono text-xs border border-gray-100 rounded-lg p-3 bg-gray-50 text-gray-700 resize-none outline-none whitespace-pre"
+        />
+      </div>
 
       <FolhaProducao
         storeId={lojaImpressao}
