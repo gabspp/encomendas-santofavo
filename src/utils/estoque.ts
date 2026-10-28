@@ -158,5 +158,13 @@ export const generateReportText = (
     });
   }
 
+  if (bolos.length > 0) {
+    report += `\n*Estoque de Bolos*\n`;
+    report += `--------------------\n`;
+    bolos.forEach(bolo => {
+      report += `${bolo.name.padEnd(20)}: ${bolo.inteiros || 0} inteiro(s), ${bolo.fatias || 0} fatia(s)\n`;
+    });
+  }
+
   return report;
 };
